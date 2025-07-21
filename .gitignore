@@ -1,0 +1,17 @@
+# dependencies
+node_modules
+.yarn
+
+# logs
+*.log
+
+# next.js
+.next
+next-env.d.ts
+
+# build
+/app
+dist
+
+# caches
+.data

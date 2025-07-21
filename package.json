@@ -1,0 +1,32 @@
+{
+  "name": "electron-tabs-template",
+  "description": "My application description",
+  "version": "1.0.0",
+  "author": "",
+  "main": "app/background.js",
+  "scripts": {
+    "dev": "nextron --run-only",
+    "build": "nextron build",
+    "postinstall": "electron-builder install-app-deps"
+  },
+  "dependencies": {
+    "conf": "^14.0.0",
+    "electron-serve": "^2.1.1",
+    "electron-store": "^10.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.15",
+    "@types/react": "^19.1.8",
+    "autoprefixer": "^10.4.21",
+    "electron": "^37.2.3",
+    "electron-builder": "26.0.12",
+    "next": "^15.4.2",
+    "nextron": "^9.5.0",
+    "postcss": "^8.5.6",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "tailwindcss": "^3",
+    "typescript": "^5.8.3"
+  },
+  "packageManager": "yarn@4.9.2+sha512.1fc009bc09d13cfd0e19efa44cbfc2b9cf6ca61482725eb35bbc5e257e093ebf4130db6dfe15d604ff4b79efd8e1e8e99b25fa7d0a6197c9f9826358d4d65c3c"
+}
