@@ -1,20 +1,28 @@
-import { contextBridge, ipcRenderer, IpcRendererEvent } from 'electron'
+import { contextBridge, ipcRenderer, IpcRendererEvent } from 'electron';
 
 const handler = {
   send(channel: string, value: unknown) {
-    ipcRenderer.send(channel, value)
+    ipcRenderer.send(channel, value);
   },
   on(channel: string, callback: (...args: unknown[]) => void) {
-    const subscription = (_event: IpcRendererEvent, ...args: unknown[]) =>
-      callback(...args)
-    ipcRenderer.on(channel, subscription)
+    const subscription = (_event: IpcRendererEvent, ...args: unknown[]) => callback(...args);
+    ipcRenderer.on(channel, subscription);
 
     return () => {
-      ipcRenderer.removeListener(channel, subscription)
-    }
+      ipcRenderer.removeListener(channel, subscription);
+    };
   },
-}
+};
 
-contextBridge.exposeInMainWorld('ipc', handler)
+contextBridge.exposeInMainWorld('ipc', handler);
 
-export type IpcHandler = typeof handler
+export type IpcHandler = typeof handler;
+
+const electronAPIHandler = {
+  createTab: (id: string, url: string) => ipcRenderer.send('create-tab', id, url),
+  switchTab: (id: string) => ipcRenderer.send('switch-tab', id),
+  loadURL: (id: string, url: string) => ipcRenderer.send('load-url', id, url),
+  closeTab: (id: string) => ipcRenderer.send('close-tab', id),
+};
+contextBridge.exposeInMainWorld('electronAPI', electronAPIHandler);
+export type electronAPI = typeof electronAPIHandler;

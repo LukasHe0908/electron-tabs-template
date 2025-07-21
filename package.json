@@ -10,19 +10,26 @@
     "postinstall": "electron-builder install-app-deps"
   },
   "dependencies": {
-    "conf": "^14.0.0",
+    "electron-context-menu": "^4.1.0",
     "electron-serve": "^2.1.1",
     "electron-store": "^10.1.0"
   },
   "devDependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
+    "@heroui/react": "^2.8.1",
+    "@mui/icons-material": "^7.2.0",
+    "@mui/material": "^7.2.0",
     "@tailwindcss/postcss": "^4.1.11",
     "@types/node": "^24.0.15",
     "@types/react": "^19.1.8",
     "autoprefixer": "^10.4.21",
     "electron": "^37.2.3",
     "electron-builder": "26.0.12",
+    "framer-motion": "^12.23.6",
     "next": "^15.4.2",
     "nextron": "^9.5.0",
+    "overlayscrollbars": "^2.11.4",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "tailwindcss": "^4.1.11",
