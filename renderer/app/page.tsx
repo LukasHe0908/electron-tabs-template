@@ -1,6 +1,7 @@
 'use client';
-import { Button, Input } from '@heroui/react';
 import React, { useState } from 'react';
+import { Button, Input } from '@heroui/react';
+import { CloseOutlined, AddOutlined, SendOutlined } from '@mui/icons-material';
 
 type Tab = { id: string; title: string; url: string };
 
@@ -46,54 +47,57 @@ export default function App() {
   };
 
   return (
-    <div className='w-full h-[80px] flex flex-col'>
+    <div className='w-full flex flex-col px-1 bg-gray-900'>
       {/* 标签栏 */}
       <div
         id='tab-bar'
-        className='flex bg-gray-800 text-white px-2 h-[40px] items-center space-x-2 overflow-x-auto scrollbar-hide'
+        className='flex text-white py-1 h-10 items-center space-x-2 overflow-x-auto scrollbar-hide scroll-smooth rounded-lg'
         onWheel={event => {
           const ele = document.getElementById('tab-bar');
           if (event.deltaY !== 0) {
-            console.log(event.deltaY);
             event.preventDefault();
-            ele.scrollBy({
-              left: event.deltaY,
-            });
+            ele?.scrollBy({ left: event.deltaY });
           }
         }}>
         {tabs.map(tab => (
           <div
             key={tab.id}
-            className={`flex items-center px-3 py-1 rounded cursor-pointer whitespace-nowrap max-w-[160px] select-none ${
-              tab.id === activeTab ? 'bg-gray-900' : 'bg-gray-600'
+            className={`flex items-center px-3 py-1 rounded-lg cursor-pointer whitespace-nowrap max-w-[160px] select-none transition-colors duration-200 ${
+              tab.id === activeTab ? 'bg-gray-900 border border-gray-700 shadow-sm' : 'bg-gray-700 hover:bg-gray-600'
             }`}
             onClick={() => switchTab(tab.id)}>
-            {tab.title}
-            <button
-              className='ml-2 text-red-400 cursor-pointer'
+            <span className='truncate'>{tab.title}</span>
+            <CloseOutlined
+              className='ml-2 text-red-400 hover:text-red-500 cursor-pointer'
+              fontSize='small'
               onClick={e => {
                 e.stopPropagation();
                 closeTab(tab.id);
-              }}>
-              ×
-            </button>
+              }}
+            />
           </div>
         ))}
-        <button onClick={addTab} className='bg-blue-500 px-2 rounded cursor-pointer'>
-          +
+        <button
+          onClick={addTab}
+          className='bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded-lg transition-colors flex items-center'>
+          <AddOutlined fontSize='small' />
         </button>
       </div>
 
       {/* 地址栏 */}
-      <div className='flex bg-gray-900 text-white px-2 h-[40px] items-center gap-1'>
+      <div className='flex h-10 items-center gap-2 pb-1 rounded-lg'>
         <Input
           value={urlInput}
           onChange={e => setUrlInput(e.target.value)}
-          className='flex-grow  px-3 rounded text-black'
+          className='flex-grow h-full rounded-md text-black placeholder-gray-400'
           placeholder='Enter URL'
+          size='sm'
         />
-        <Button onClick={goToURL} className=' bg-green-600 px-4 rounded'>
-          Go
+        <Button
+          onPress={goToURL}
+          className='bg-green-600 hover:bg-green-700 h-full rounded-md text-white transition-colors'
+          isIconOnly>
+          <SendOutlined></SendOutlined>
         </Button>
       </div>
     </div>
