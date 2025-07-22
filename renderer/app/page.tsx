@@ -1,8 +1,10 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import { Button, Input, ScrollShadow } from '@heroui/react';
-import { CloseOutlined, AddOutlined, SendOutlined, PublicOutlined } from '@mui/icons-material';
+import { CloseOutlined, AddOutlined, SendOutlined, PublicOutlined, RefreshOutlined } from '@mui/icons-material';
 import { CircularProgress } from '@mui/material';
+import TabItem from '../components/TabItem';
+import { useContainerWidth } from '../components/hooks/useContainerWidth';
 
 type Tab = {
   id: string;
@@ -56,12 +58,16 @@ export default function App() {
     }
   };
 
+  const { ref: containerRef, width: containerWidth } = useContainerWidth<HTMLDivElement>();
+  const tabWidth = Math.max(72, Math.min(220, (containerWidth - 8) / tabs.length));
+
   return (
     <div className='w-full h-screen flex flex-col '>
       {/* 标签栏 */}
       <div
         id='tab-bar'
-        className='flex items-center h-[42px] px-1 py-1 space-x-1 overflow-x-auto scrollbar-hide bg-[#eaeaed]'
+        ref={containerRef}
+        className='flex items-center h-[42px] px-1 py-1 overflow-x-auto scrollbar-hide bg-[#eaeaed] gap-1'
         onWheel={event => {
           const ele = document.getElementById('tab-bar');
           if (event.deltaY !== 0) {
@@ -69,50 +75,37 @@ export default function App() {
             ele?.scrollBy({ left: event.deltaY });
           }
         }}>
-        {tabs.map(tab => (
-          <div
-            key={tab.id}
-            className={`flex items-center pl-2 pr-1 py-1 h-full rounded-md text-sm cursor-pointer select-none transition-colors max-w-[220px]
-        ${tab.id === activeTab ? 'bg-white shadow-sm' : 'hover:bg-[rgba(0,0,0,0.1)]'}
-      `}
-            onClick={() => switchTab(tab.id)}>
-            {/* favicon / loading / fallback */}
-            <div className='w-4 h-4 mr-2 flex items-center justify-center'>
-              {tab.loading ? (
-                <CircularProgress size={14} thickness={5} />
-              ) : tab.favicon ? (
-                <img
-                  src={tab.favicon}
-                  alt='favicon'
-                  className='w-4 h-4'
-                  onError={e => (e.currentTarget.style.display = 'none')}
-                />
-              ) : (
-                <PublicOutlined style={{ fontSize: '1.25em' }} />
-              )}
-            </div>
+        {tabs.map(tab => {
+          console.log(containerWidth);
 
-            {/* 页面标题 */}
-            <ScrollShadow className='text-black flex-1 whitespace-nowrap overflow-hidden'>
-              {tab.title || '新标签页'}
-            </ScrollShadow>
-
-            {/* 关闭按钮 */}
-            <div
-              className='ml-2 text-gray-600 hover:bg-[rgba(0,0,0,0.1)] rounded-md transition-colors p-1 aspect-square w-auto h-full flex items-center justify-center'
-              onClick={e => {
-                e.stopPropagation();
-                closeTab(tab.id);
-              }}>
-              <CloseOutlined fontSize='small' />
+          return (
+            <div key={tab.id} style={{ width: `${tabWidth}px`, height: '100%' }}>
+              <TabItem
+                id={tab.id}
+                title={tab.title}
+                favicon={tab.favicon}
+                loading={tab.loading}
+                active={tab.id === activeTab}
+                width={tabWidth}
+                onClick={() => switchTab(tab.id)}
+                onClose={() => closeTab(tab.id)}
+              />
             </div>
-          </div>
-        ))}
+          );
+        })}
         {/* 添加新标签按钮 */}
         <button
           onClick={addTab}
-          className='ml-1 h-[30px] w-[30px] flex items-center justify-center rounded-md cursor-pointer hover:bg-[rgba(0,0,0,0.1)] transition-colors text-gray-600 focus-visible:outline-0 focus-visible:ring-2 ring-blue-400'>
+          className='ml-2 h-full aspect-square flex items-center justify-center rounded-md cursor-pointer hover:bg-[rgba(0,0,0,0.1)] transition-colors text-gray-600 focus-visible:outline-0 focus-visible:ring-2 ring-blue-400'>
           <AddOutlined fontSize='small' />
+        </button>
+        {/* Debug Refresh Button */}
+        <button
+          onClick={() => {
+            location.reload();
+          }}
+          className='h-full aspect-square flex items-center justify-center rounded-md cursor-pointer hover:bg-[rgba(0,0,0,0.1)] transition-colors text-gray-600 focus-visible:outline-0 focus-visible:ring-2 ring-blue-400'>
+          <RefreshOutlined fontSize='small' />
         </button>
       </div>
 
