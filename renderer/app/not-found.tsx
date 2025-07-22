@@ -7,7 +7,7 @@ export default function NotFound() {
       <span className='text-2xl font-bold'>Page Not Found</span>
       <Button
         onPress={() => {
-          window.location.href = '/home';
+          window.location.href = '/';
         }}>
         返回首页
       </Button>

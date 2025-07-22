@@ -13,7 +13,7 @@ if (isProd) {
 }
 
 Menu.setApplicationMenu(null);
-contextMenu({
+const contextMenuOptions = {
   showSearchWithGoogle: false,
   showCopyLink: true,
   showLearnSpelling: true,
@@ -26,7 +26,7 @@ contextMenu({
     copyImage: '复制图像',
     inspect: '检查',
   },
-});
+};
 
 function getProviderPath(params: string) {
   if (isProd) {
@@ -44,6 +44,8 @@ let currentTabId: string | null = null;
 (async () => {
   await app.whenReady();
 
+  contextMenu(contextMenuOptions);
+
   // 创建 splash 窗口
   let splashWindow = new BrowserWindow({
     width: 400,
@@ -60,6 +62,8 @@ let currentTabId: string | null = null;
     show: false,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
+      webSecurity: false,
+      webviewTag: true,
     },
   });
 
@@ -84,6 +88,12 @@ let currentTabId: string | null = null;
     if (currentTabId) {
       resizeContentView(currentTabId);
     }
+  });
+  mainWindow.webContents.on('did-attach-webview', (_event, webviewWebContents) => {
+    contextMenu({
+      ...contextMenuOptions,
+      window: webviewWebContents, // 注入 webview 的 webContents
+    });
   });
 })();
 
@@ -110,6 +120,10 @@ function contentBounds(): Rectangle {
   const [w, h] = mainWindow.getContentSize();
   return { x: 0, y: 80, width: w, height: h - 80 }; // 上方 80px 留给 navbar
 }
+
+ipcMain.handle('getProviderPath', (e, path: string) => {
+  return getProviderPath(path);
+});
 
 ipcMain.on('create-tab', (e, id: string, url: string) => {
   const view = new WebContentsView();
@@ -155,8 +169,4 @@ ipcMain.on('load-url', (e, id: string, url: string) => {
 
 app.on('window-all-closed', () => {
   app.quit();
-});
-
-ipcMain.on('message', async (event, arg) => {
-  event.reply('message', `${arg} World!`);
 });

@@ -19,6 +19,7 @@ contextBridge.exposeInMainWorld('ipc', handler);
 export type IpcHandler = typeof handler;
 
 const electronAPIHandler = {
+  getProviderPath: (path: string) => ipcRenderer.invoke('getProviderPath', path),
   createTab: (id: string, url: string) => ipcRenderer.send('create-tab', id, url),
   switchTab: (id: string) => ipcRenderer.send('switch-tab', id),
   loadURL: (id: string, url: string) => ipcRenderer.send('load-url', id, url),
