@@ -130,50 +130,56 @@ export default function App() {
 
   return (
     <div className='w-full h-screen flex flex-col bg-[#eaeaed]'>
-      {/* 标签栏 */}
-      <div
-        id='tab-bar'
-        ref={containerRef}
-        className='flex items-center h-[42px] px-1 py-1 overflow-x-auto scrollbar-hide gap-1'
-        onWheel={event => {
-          const ele = document.getElementById('tab-bar');
-          if (event.deltaY !== 0) {
-            event.preventDefault();
-            ele?.scrollBy({ left: event.deltaY });
-          }
-        }}>
-        {tabs.map(tab => {
-          // console.log(containerWidth);
+      {/* 窗口标题栏 */}
+      <div className='flex flex-row w-full'>
+        {/* 标签栏 */}
+        <div
+          id='tab-bar'
+          ref={containerRef}
+          className='grow flex items-center h-[42px] px-1 py-1 overflow-x-auto scrollbar-hide gap-1'
+          onWheel={event => {
+            const ele = document.getElementById('tab-bar');
+            if (event.deltaY !== 0) {
+              event.preventDefault();
+              ele?.scrollBy({ left: event.deltaY });
+            }
+          }}>
+          {tabs.map(tab => {
+            // console.log(containerWidth);
 
-          return (
-            <div key={tab.id} style={{ width: `${tabWidth}px`, height: '100%' }}>
-              <TabItem
-                id={tab.id}
-                title={tab.title}
-                favicon={tab.favicon}
-                loading={tab.loading}
-                active={tab.id === activeTab}
-                width={tabWidth}
-                onClick={() => switchTab(tab.id)}
-                onClose={() => closeTab(tab.id)}
-              />
-            </div>
-          );
-        })}
-        {/* 添加新标签按钮 */}
-        <button
-          onClick={addTab}
-          className='ml-2 h-full aspect-square flex items-center justify-center rounded-md cursor-pointer hover:bg-[rgba(0,0,0,0.1)] transition-colors text-gray-600 focus-visible:outline-0 focus-visible:ring-2 ring-blue-400'>
-          <AddOutlined fontSize='small' />
-        </button>
-        {/* Debug Refresh Button */}
-        <button
-          onClick={() => {
-            location.reload();
-          }}
-          className='h-full aspect-square flex items-center justify-center rounded-md cursor-pointer hover:bg-[rgba(0,0,0,0.1)] transition-colors text-gray-600 focus-visible:outline-0 focus-visible:ring-2 ring-blue-400'>
-          <RefreshOutlined fontSize='small' />
-        </button>
+            return (
+              <div key={tab.id} style={{ width: `${tabWidth}px`, height: '100%' }}>
+                <TabItem
+                  id={tab.id}
+                  title={tab.title}
+                  favicon={tab.favicon}
+                  loading={tab.loading}
+                  active={tab.id === activeTab}
+                  width={tabWidth}
+                  onClick={() => switchTab(tab.id)}
+                  onClose={() => closeTab(tab.id)}
+                />
+              </div>
+            );
+          })}
+          {/* 添加新标签按钮 */}
+          <button
+            onClick={addTab}
+            className='ml-2 h-full aspect-square flex items-center justify-center rounded-md cursor-pointer hover:bg-[rgba(0,0,0,0.1)] transition-colors text-gray-600 focus-visible:outline-0 focus-visible:ring-2 ring-blue-400'>
+            <AddOutlined fontSize='small' />
+          </button>
+          {/* Debug Refresh Button */}
+          <button
+            onClick={() => {
+              location.reload();
+            }}
+            className='h-full aspect-square flex items-center justify-center rounded-md cursor-pointer hover:bg-[rgba(0,0,0,0.1)] transition-colors text-gray-600 focus-visible:outline-0 focus-visible:ring-2 ring-blue-400'>
+            <RefreshOutlined fontSize='small' />
+          </button>
+          <div className='h-full grow-1 [app-region:drag]'></div>
+        </div>
+        {/* 窗口控制菜单 */}
+        <div className='w-[138px]'></div>
       </div>
 
       {/* 地址栏 */}
@@ -291,7 +297,7 @@ export default function App() {
             }}
             src={tab.url}
             style={{ display: tab.id === activeTab ? 'flex' : 'none', width: '100%', height: '100%' }}
-            className='w-full h-full'
+            className='w-full h-full select-none'
           />
         ))}
       </div>

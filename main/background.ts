@@ -60,6 +60,12 @@ let currentTabId: string | null = null;
     width: 1200,
     height: 800,
     show: false,
+    titleBarStyle: 'hidden',
+    titleBarOverlay: {
+      color: '#eaeaed',
+      symbolColor: '#000',
+      height: 42,
+    },
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       webSecurity: false,
@@ -68,6 +74,7 @@ let currentTabId: string | null = null;
   });
 
   mainWindow.loadURL(getProviderPath('/'));
+  // mainWindow.loadURL(getProviderPath('/tabs.html'));
 
   mainWindow.webContents.on('did-fail-load', err => {
     console.log(err);

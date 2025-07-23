@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Webview</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        width: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <tab-group new-tab-button="true" sortable="true"></tab-group>
+
+    <script src="electron-tabs.js"></script>
+
+    <script>
+      // Select tab-group
+      const tabGroup = document.querySelector('tab-group');
+
+      // Setup the default tab which is created when the "New Tab" button is clicked
+      tabGroup.setDefaultTab({
+        title: 'New Page',
+        src: 'error',
+        active: true,
+      });
+
+      // Do stuff
+      const tab = tabGroup.addTab({
+        title: 'Example',
+        src: 'https://example.com',
+        active: true,
+      });
+      const pos = tab.getPosition();
+      console.log('Tab position is ' + pos);
+    </script>
+  </body>
+</html>

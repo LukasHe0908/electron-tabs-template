@@ -12,7 +12,8 @@
   "dependencies": {
     "electron-context-menu": "^4.1.0",
     "electron-serve": "^2.1.1",
-    "electron-store": "^10.1.0"
+    "electron-store": "^10.1.0",
+    "electron-tabs": "^1.0.4"
   },
   "devDependencies": {
     "@emotion/react": "^11.14.0",

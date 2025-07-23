@@ -1,11 +1,10 @@
 'use client';
-import { useEffect, useState } from 'react';
-import { Button } from '@heroui/react';
+import { useState } from 'react';
 
 export default function ErrorPage() {
   const params = new URLSearchParams(location.search);
   const failedUrl = params.get('url') ?? '';
-  const decUrl = new URL(failedUrl);
+  const hostname = failedUrl && new URL(failedUrl).hostname;
   const [clicked, setClicked] = useState(false);
 
   const handleRetry = () => {
@@ -25,7 +24,7 @@ export default function ErrorPage() {
         <div className=''>
           <h1 className='text-3xl font-bold mb-4'>页面加载失败。</h1>
           <p className='mb-2 text-xl'>
-            我们无法连接至 <span className='px-2 break-all'>{decUrl.hostname || '该网站'}</span>的服务器。
+            我们无法连接至<span className={'break-all' + (hostname && ' px-2')}>{hostname || '该网站'}</span>的服务器。
           </p>
           <p className='mb-4'>若您确认输入的是正确网址，可以：</p>
           <ul className='list-disc list-inside space-y-1 mb-6'>

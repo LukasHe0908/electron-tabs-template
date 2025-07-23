@@ -7035,6 +7035,7 @@ __metadata:
     electron-context-menu: "npm:^4.1.0"
     electron-serve: "npm:^2.1.1"
     electron-store: "npm:^10.1.0"
+    electron-tabs: "npm:^1.0.4"
     framer-motion: "npm:^12.23.6"
     next: "npm:^15.4.2"
     nextron: "npm:^9.5.0"
@@ -7045,6 +7046,13 @@ __metadata:
     typescript: "npm:^5.8.3"
   languageName: unknown
   linkType: soft
+
+"electron-tabs@npm:^1.0.4":
+  version: 1.0.4
+  resolution: "electron-tabs@npm:1.0.4"
+  checksum: 10c0/2d31345a25a70057fe801b29f21b2da14683b29dd73cbb5d6aa88ca7da9d3a8b04cc19f9c22748071c620b026aa313976b21ccef589261983415833eac390a13
+  languageName: node
+  linkType: hard
 
 "electron-to-chromium@npm:^1.5.173":
   version: 1.5.187
