@@ -118,7 +118,7 @@ export default function App() {
 
     const current = webviewsRef.current.get(activeTab ?? '');
     current?.addEventListener('dom-ready', () => {
-      console.log(current);
+      console.log('webviewsRef dom-ready', current);
     });
 
     current?.addEventListener('keydown', handleKey);
@@ -184,11 +184,7 @@ export default function App() {
           onChange={e => setUrlInput(e.target.value)}
           className='flex-1 text-sm  text-black '
           classNames={{
-            inputWrapper: [
-              '!bg-[rgba(0,0,0,0.03)]',
-              'group-data-[focus=true]:!bg-white',
-              'group-data-[focus=true]:shadow-md',
-            ],
+            inputWrapper: ['!bg-[rgba(0,0,0,0.03)]', 'group-data-[focus=true]:!bg-white', 'group-data-[focus=true]:shadow-md'],
           }}
           placeholder='Search or enter address'
           size='sm'
@@ -209,42 +205,42 @@ export default function App() {
             ref={(el: Electron.WebviewTag) => {
               if (el && !webviewsRef.current.get(tab.id)) {
                 webviewsRef.current.set(tab.id, el);
+                (async () => {
+                  const errorPage = await window.electronAPI?.getProviderPath('/error/');
+                  el.addEventListener('did-fail-load', async (e: any) => {
+                    if (e.errorCode === -3) return; // 忽略 ERR_ABORTED
 
-                el.addEventListener('did-fail-load', async (e: any) => {
-                  if (e.errorCode === -3) return; // 忽略 ERR_ABORTED
+                    console.error('pageLoadFail', e);
 
-                  console.error(e);
-                  if (!tab.url.includes('error.html')) {
-                    const errorPage = await window.electronAPI?.getProviderPath('/error.html');
-                    el.src = errorPage;
-                    return;
-                    setTabs(tabs =>
-                      tabs.map(t => (t.id === tab.id ? { ...t, url: errorPage, title: '页面加载失败' } : t))
-                    );
-                  }
-                });
+                    el.loadURL(errorPage + `?url=${encodeURIComponent(el.getURL())}`);
+                    setTabs(tabs => tabs.map(t => (t.id === tab.id ? { ...t, title: '页面加载失败' } : t)));
+                  });
 
-                // 1. 标题更新
-                el.addEventListener('page-title-updated', e => {
-                  const title = (e as any).title;
-                  console.log('pageTitleUpdated', tab.id, el.getURL(), title);
+                  // 1. 标题更新
+                  el.addEventListener('page-title-updated', e => {
+                    const currentUrl = el.getURL();
+                    if (currentUrl.startsWith(errorPage)) return;
 
-                  setTabs(tabs => tabs.map(t => (t.id === tab.id ? { ...t, title } : t)));
-                });
+                    const title = (e as any).title;
+                    console.log('pageTitleUpdated', tab.id, el.getURL(), title);
 
-                // 2. URL 更新
-                const updateUrl = () => {
-                  const currentUrl = el.getURL();
-                  console.log('updateUrl', tab.id, el.getURL(), el.getTitle());
+                    setTabs(tabs => tabs.map(t => (t.id === tab.id ? { ...t, title } : t)));
+                  });
 
-                  setTabs(tabs =>
-                    tabs.map(t => (t.id === tab.id ? { ...t, title: el.getTitle(), url: currentUrl } : t))
-                  );
-                  if (tab.id === activeTab) setUrlInput(currentUrl);
-                };
+                  // 2. URL 更新
+                  const updateUrl = () => {
+                    const currentUrl = el.getURL();
+                    if (currentUrl.startsWith(errorPage)) return;
 
-                el.addEventListener('did-navigate', updateUrl);
-                el.addEventListener('did-navigate-in-page', updateUrl);
+                    console.log('updateUrl', tab.id, el.getURL(), el.getTitle());
+
+                    setTabs(tabs => tabs.map(t => (t.id === tab.id ? { ...t, title: el.getTitle(), url: currentUrl } : t)));
+                    if (tab.id === activeTab) setUrlInput(currentUrl);
+                  };
+
+                  el.addEventListener('did-navigate', updateUrl);
+                  el.addEventListener('did-navigate-in-page', updateUrl);
+                })();
 
                 // 3. favicon 和 loading 状态
                 el.addEventListener('did-start-loading', () => {
