@@ -17,7 +17,7 @@ export interface TabItemProps {
 
 export default function TabItem({
   id,
-  title = '新标签页',
+  title,
   favicon,
   loading = false,
   active = false,
@@ -59,7 +59,9 @@ export default function TabItem({
 
       {/* 标题 + 遮罩 */}
       <div className='relative flex-1 min-w-0'>
-        <span className='block text-clip overflow-hidden whitespace-nowrap text-black text-sm'>{title}</span>
+        <span className='block text-clip overflow-hidden whitespace-nowrap text-black text-sm'>
+          {title || '新标签页'}
+        </span>
       </div>
 
       {/* 关闭按钮 */}

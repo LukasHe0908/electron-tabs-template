@@ -17,8 +17,18 @@ type Tab = {
 export default function App() {
   const [tabs, setTabs] = useState<Tab[]>([]);
   const [activeTab, setActiveTab] = useState<string | null>(null);
+  const tabsRef = useRef<Tab[]>([]);
+  const activeTabRef = useRef<string | null>(null);
   const [urlInput, setUrlInput] = useState('');
   const webviewsRef = useRef(new Map<string, Electron.WebviewTag>());
+
+  useEffect(() => {
+    tabsRef.current = tabs;
+  }, [tabs]);
+
+  useEffect(() => {
+    activeTabRef.current = activeTab;
+  }, [activeTab]);
 
   const addTab = () => {
     console.log('addTab');
@@ -40,14 +50,20 @@ export default function App() {
   };
 
   const closeTab = (id: string) => {
-    console.log('closeTab', id);
+    const currentTabs = tabsRef.current;
+    const currentActive = activeTabRef.current;
 
-    setTabs(t => t.filter(tab => tab.id !== id));
-    if (activeTab === id && tabs.length > 1) {
-      const next = tabs.find(t => t.id !== id);
-      if (next) {
-        switchTab(next.id);
-      }
+    const index = currentTabs.findIndex(t => t.id === id);
+    const newTabs = currentTabs.filter(tab => tab.id !== id);
+
+    setTabs(newTabs);
+
+    // 如果关闭的是当前激活 tab，激活左边一个（或最右一个）
+    if (currentActive === id && newTabs.length > 0) {
+      const nextIndex = index > 0 ? index - 1 : 0;
+      const nextTab = newTabs[nextIndex];
+      setActiveTab(nextTab.id);
+      setUrlInput(nextTab.url);
     }
   };
 
@@ -58,16 +74,67 @@ export default function App() {
     }
   };
 
+  const closeActiveTab = () => {
+    const currentActive = activeTabRef.current;
+    if (currentActive) {
+      closeTab(currentActive);
+    }
+  };
+  const focusUrlInput = () => {
+    const input = document.getElementById('url-input') as HTMLInputElement;
+    if (input) input.focus();
+  };
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.key === 'w') {
+        e.preventDefault();
+        closeActiveTab(); // 关闭当前标签
+      } else if (e.ctrlKey && e.key === 't') {
+        e.preventDefault();
+        addTab(); // 添加新标签
+      } else if (e.key === 'F6') {
+        e.preventDefault();
+        focusUrlInput(); // 聚焦地址栏
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.key === 'w') {
+        e.preventDefault();
+        closeActiveTab();
+      } else if (e.ctrlKey && e.key === 't') {
+        e.preventDefault();
+        addTab();
+      } else if (e.key === 'F6') {
+        e.preventDefault();
+        focusUrlInput();
+      }
+    };
+
+    const current = webviewsRef.current.get(activeTab ?? '');
+    current?.addEventListener('dom-ready', () => {
+      console.log(current);
+    });
+
+    current?.addEventListener('keydown', handleKey);
+    return () => current?.removeEventListener('keydown', handleKey);
+  }, [activeTab]);
+
   const { ref: containerRef, width: containerWidth } = useContainerWidth<HTMLDivElement>();
   const tabWidth = Math.max(72, Math.min(220, (containerWidth - 8) / tabs.length));
 
   return (
-    <div className='w-full h-screen flex flex-col '>
+    <div className='w-full h-screen flex flex-col bg-[#eaeaed]'>
       {/* 标签栏 */}
       <div
         id='tab-bar'
         ref={containerRef}
-        className='flex items-center h-[42px] px-1 py-1 overflow-x-auto scrollbar-hide bg-[#eaeaed] gap-1'
+        className='flex items-center h-[42px] px-1 py-1 overflow-x-auto scrollbar-hide gap-1'
         onWheel={event => {
           const ele = document.getElementById('tab-bar');
           if (event.deltaY !== 0) {
@@ -76,7 +143,7 @@ export default function App() {
           }
         }}>
         {tabs.map(tab => {
-          console.log(containerWidth);
+          // console.log(containerWidth);
 
           return (
             <div key={tab.id} style={{ width: `${tabWidth}px`, height: '100%' }}>
@@ -110,13 +177,18 @@ export default function App() {
       </div>
 
       {/* 地址栏 */}
-      <div className='flex flex-row items-center px-2 py-1 space-x-2 bg-[#eaeaed] border-b-1 border-gray-300'>
+      <div className='flex flex-row items-center px-2 py-1 space-x-2 border-b-1 border-gray-300'>
         <Input
+          id='url-input'
           value={urlInput}
           onChange={e => setUrlInput(e.target.value)}
           className='flex-1 text-sm  text-black '
           classNames={{
-            inputWrapper: ['!bg-[rgba(0,0,0,0.03)]', 'group-data-[focus=true]:!bg-white'],
+            inputWrapper: [
+              '!bg-[rgba(0,0,0,0.03)]',
+              'group-data-[focus=true]:!bg-white',
+              'group-data-[focus=true]:shadow-md',
+            ],
           }}
           placeholder='Search or enter address'
           size='sm'
