@@ -2,13 +2,13 @@ appId: com.example.electron-tabs-template
 productName: Electron Tabs Template
 copyright: Copyright © 2025
 directories:
-  output: dist
+  output: build/dist
   buildResources: resources
 files:
   - from: .
     filter:
       - package.json
-      - app
+      - build/app
 publish: null
 nsis:
   oneClick: false
