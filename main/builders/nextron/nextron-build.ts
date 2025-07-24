@@ -28,6 +28,10 @@ const rendererSrcDir = getNextronConfig().rendererSrcDir || 'renderer';
 const execaOptions: execa.Options = {
   cwd,
   stdio: 'inherit',
+  env: {
+    ...process.env,
+    NODE_ENV: 'production',
+  },
 };
 
 (async () => {

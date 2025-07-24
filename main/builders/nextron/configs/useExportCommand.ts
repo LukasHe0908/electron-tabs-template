@@ -49,6 +49,7 @@ export const useExportCommand = async (): Promise<boolean> => {
     return true;
   }
   if (majorVersion > 13) {
+    (process.env as any).NODE_ENV = 'production';
     const { output, distDir } = require(nextConfigPath);
     if (output !== 'export') {
       logger.error(
@@ -58,7 +59,7 @@ export const useExportCommand = async (): Promise<boolean> => {
     }
     if (distDir !== '../build/app') {
       logger.error(
-        'Nextron exports the build results to "app" directory, so please set "distDir" to "../build/app" in next.config.js.'
+        'Nextron exports the build results to "app" directory, so please set "distDir" to "../build/app" in next.config.ts.'
       );
       process.exit(1);
     }

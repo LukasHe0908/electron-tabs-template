@@ -11,8 +11,8 @@ next-env.d.ts
 
 # build
 /build
-# /app
-# dist
+/app
+dist
 
 # caches
 .data
