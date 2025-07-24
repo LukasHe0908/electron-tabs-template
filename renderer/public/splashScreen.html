@@ -86,12 +86,18 @@
         align-items: center;
         justify-content: center;
       }
+
+      @media (prefers-color-scheme: dark) {
+        #WindowBox {
+          background-color: #2c2c2e;
+        }
+      }
     </style>
   </head>
   <body>
     <div id="WindowBox">
       <div class="logo">
-        <img src="bard--v2.svg" alt="" srcset="" />
+        <img src="bard.svg" alt="" srcset="" />
       </div>
       <div id="LoadingBox">
         <div class="loading-text">软件正在加载。</div>

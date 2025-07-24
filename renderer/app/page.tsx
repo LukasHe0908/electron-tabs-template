@@ -250,11 +250,13 @@ export default function App() {
           id='url-input'
           value={urlInput}
           onChange={e => setUrlInput(e.target.value)}
-          className='flex-1 text-sm  text-black '
+          className='flex-1 text-sm'
           classNames={{
             inputWrapper: [
               '!bg-[rgba(0,0,0,0.03)]',
+              'dark:!bg-[rgba(255,255,255,0.03)]',
               'group-data-[focus=true]:!bg-white',
+              'dark:group-data-[focus=true]:!bg-[rgba(255,255,255,0.2)]',
               'group-data-[focus=true]:shadow-md',
             ],
           }}
@@ -345,41 +347,6 @@ export default function App() {
                   // 更新 loading 状态
                   console.log('stopLoading', tab.id, el.getURL());
                   setTabs(tabs => tabs.map(t => (t.id === tab.id ? { ...t, loading: false } : t)));
-
-                  return;
-                  // 尝试提取 favicon
-                  el.executeJavaScript(
-                    `(() => {
-  const link = document.querySelector('link[rel~="icon"]');
-  const href = link && link.getAttribute('href');
-  const url = new URL(href || '/favicon.ico', document.baseURI);
-  return url.href;
-})()`
-                  )
-                    .then(async (faviconUrl: string | null) => {
-                      console.log('faviconUrl', faviconUrl);
-
-                      if (!faviconUrl) return;
-
-                      try {
-                        const res = await fetch(faviconUrl);
-                        const contentType = res.headers.get('content-type') || '';
-
-                        if (contentType.includes('image/')) {
-                          // 转换为 blob 对象 URL
-                          const blob = await res.blob();
-                          const objectURL = URL.createObjectURL(blob);
-                          setTabs(tabs => tabs.map(t => (t.id === tab.id ? { ...t, favicon: objectURL } : t)));
-                        } else {
-                          // 非格式，不使用
-                        }
-                      } catch (error) {
-                        // console.warn('获取 favicon 失败:', error);
-                      }
-                    })
-                    .catch(() => {
-                      // 忽略 JS 注入错误
-                    });
                 });
 
                 // favicon
@@ -392,7 +359,7 @@ export default function App() {
 
                   fetch(faviconUrl)
                     .then(res => {
-                      if (!res.ok || !res.headers.get('content-type')?.includes('image/')) return null;
+                      if (!res.ok || (!res.headers.get('content-type')?.includes('/image') && false)) return null;
                       return res.blob();
                     })
                     .then(blob => {

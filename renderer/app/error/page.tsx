@@ -11,6 +11,29 @@ export default function ErrorPage() {
     setFailedUrl(url);
   }, []);
 
+  // 设置暗色 favicon
+  useEffect(() => {
+    const setFavicon = (dark: boolean) => {
+      const link = document.querySelector("link[rel~='icon']") || document.createElement('link');
+      link.setAttribute('rel', 'icon');
+      link.setAttribute('type', 'image/svg+xml');
+      link.setAttribute('href', dark ? '/error-dark.svg' : '/error.svg');
+      document.head.appendChild(link);
+    };
+
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    setFavicon(mediaQuery.matches); // 初始化
+
+    const listener = (e: MediaQueryListEvent) => {
+      setFavicon(e.matches);
+    };
+
+    mediaQuery.addEventListener('change', listener);
+    return () => {
+      mediaQuery.removeEventListener('change', listener);
+    };
+  }, []);
+
   const hostname = failedUrl
     ? (() => {
         try {
@@ -34,7 +57,7 @@ export default function ErrorPage() {
   return (
     <>
       <title>页面加载失败</title>
-      <div className='w-screen h-screen flex items-center justify-center px-4'>
+      <div className='w-screen h-screen flex items-center justify-center px-4 dark:bg-[#1c1b22] dark:text-white'>
         <div className=''>
           <h1 className='text-3xl font-bold mb-4'>页面加载失败。</h1>
           <p className='mb-2 text-xl'>
