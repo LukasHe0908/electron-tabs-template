@@ -1,19 +1,33 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 export default function ErrorPage() {
-  const params = new URLSearchParams(location.search);
-  const failedUrl = params.get('url') ?? '';
-  const hostname = failedUrl && new URL(failedUrl).hostname;
+  const [failedUrl, setFailedUrl] = useState('');
   const [clicked, setClicked] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const url = params.get('url') ?? '';
+    setFailedUrl(url);
+  }, []);
+
+  const hostname = failedUrl
+    ? (() => {
+        try {
+          return new URL(failedUrl).hostname;
+        } catch {
+          return '';
+        }
+      })()
+    : '';
 
   const handleRetry = () => {
     setClicked(true);
     // window.history.back();
     if (failedUrl) {
-      location.href = failedUrl;
+      window.location.href = failedUrl;
     } else {
-      location.reload();
+      window.location.reload();
     }
   };
 
