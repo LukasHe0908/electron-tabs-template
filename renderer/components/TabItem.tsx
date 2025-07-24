@@ -67,14 +67,14 @@ export default function TabItem({
       {/* 关闭按钮 */}
       {showClose && (
         <div
-          className={`text-gray-600 hover:bg-[rgba(0,0,0,0.1)] rounded-md transition-colors p-1 aspect-square flex items-center justify-center shrink-0  ${
+          className={`h-full aspect-square flex items-center justify-center shrink-0 text-gray-800 hover:bg-[rgba(0,0,0,0.1)] rounded-md transition-colors p-1  ${
             width > 140 && 'ml-1'
           }`}
           onClick={e => {
             e.stopPropagation();
             onClose?.(e);
           }}>
-          <CloseOutlined fontSize='small' />
+          <CloseOutlined style={{ fontSize: '14px' }}/>
         </div>
       )}
     </div>
