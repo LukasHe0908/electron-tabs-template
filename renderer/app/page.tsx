@@ -158,7 +158,7 @@ export default function App() {
   const tabWidth = Math.max(72, Math.min(220, (containerWidth - totalGap - 8) / tabs.length));
 
   return (
-    <div className='w-full h-screen flex flex-col bg-[#eaeaed]'>
+    <div className='w-full h-screen flex flex-col bg-[#eaeaed] dark:bg-[#1f1e25]'>
       {/* 窗口标题栏 */}
       <div className='flex flex-row w-full'>
         <div className='min-w-8 [app-region:drag]'></div>
@@ -198,17 +198,17 @@ export default function App() {
               onClick={() => {
                 addTab();
               }}
-              className='h-full aspect-square flex items-center justify-center rounded-md cursor-pointer hover:bg-[rgba(0,0,0,0.1)] transition-colors text-gray-800 focus-visible:outline-0 focus-visible:ring-2 ring-blue-400'>
+              className='h-full aspect-square flex items-center justify-center rounded-md cursor-pointer hover:bg-[rgba(0,0,0,0.1)] dark:hover:bg-[rgba(255,255,255,0.1)] transition-colors text-gray-800 dark:text-gray-200 focus-visible:outline-0 focus-visible:ring-2 ring-blue-400'>
               <AddOutlined style={{ fontSize: '20px' }} />
             </button>
             {/* Debug Refresh Button */}
-            {/* <button
+            <button
               onClick={() => {
                 location.reload();
               }}
-              className='h-full aspect-square flex items-center justify-center rounded-md cursor-pointer hover:bg-[rgba(0,0,0,0.1)] transition-colors text-gray-800 focus-visible:outline-0 focus-visible:ring-2 ring-blue-400'>
-              <RefreshOutlined style={{ fontSize: '16px' }} />
-            </button> */}
+              className='h-full aspect-square flex items-center justify-center rounded-md cursor-pointer hover:bg-[rgba(0,0,0,0.1)] dark:hover:bg-[rgba(255,255,255,0.1)] transition-colors text-gray-800 dark:text-gray-200 focus-visible:outline-0 focus-visible:ring-2 ring-blue-400'>
+              <RefreshOutlined style={{ fontSize: '20px' }} />
+            </button>
           </div>
 
           <div className='h-full grow-1 [app-region:drag]'></div>
@@ -218,7 +218,7 @@ export default function App() {
       </div>
 
       {/* 地址栏 */}
-      <div className='flex flex-row items-center px-2 py-1 border-b-1 border-gray-300'>
+      <div className='flex flex-row items-center px-2 py-1 border-b-1 border-gray-300 dark:border-gray-800'>
         {/* 控制按钮 */}
         <div className='flex gap-1 h-full'>
           <button
@@ -226,7 +226,7 @@ export default function App() {
               goBack();
             }}
             disabled={!canGoBack}
-            className='h-full aspect-square flex items-center justify-center rounded-md cursor-pointer hover:bg-[rgba(0,0,0,0.1)] transition-colors text-[#5b5b66] disabled:text-[#c8c8ce] focus-visible:outline-0 focus-visible:ring-2 ring-blue-400'>
+            className='h-full aspect-square flex items-center justify-center rounded-md cursor-pointer hover:bg-[rgba(0,0,0,0.1)] dark:hover:bg-[rgba(255,255,255,0.1)] transition-colors text-[#5b5b66] dark:text-white disabled:text-[#c8c8ce] dark:disabled:text-[#5b5a60] focus-visible:outline-0 focus-visible:ring-2 ring-blue-400'>
             <ArrowBackOutlined fontSize='small' />
           </button>
           <button
@@ -234,14 +234,14 @@ export default function App() {
               goForward();
             }}
             disabled={!canGoForward}
-            className='h-full aspect-square flex items-center justify-center rounded-md cursor-pointer hover:bg-[rgba(0,0,0,0.1)] transition-colors text-[#5b5b66] disabled:text-[#c8c8ce] focus-visible:outline-0 focus-visible:ring-2 ring-blue-400'>
+            className='h-full aspect-square flex items-center justify-center rounded-md cursor-pointer hover:bg-[rgba(0,0,0,0.1)] dark:hover:bg-[rgba(255,255,255,0.1)] transition-colors text-[#5b5b66] dark:text-white disabled:text-[#c8c8ce] dark:disabled:text-[#5b5a60] focus-visible:outline-0 focus-visible:ring-2 ring-blue-400'>
             <ArrowForwardOutlined fontSize='small' />
           </button>
           <button
             onClick={() => {
               reloadPage();
             }}
-            className='h-full aspect-square flex items-center justify-center rounded-md cursor-pointer hover:bg-[rgba(0,0,0,0.1)] transition-colors text-[#5b5b66] focus-visible:outline-0 focus-visible:ring-2 ring-blue-400'>
+            className='h-full aspect-square flex items-center justify-center rounded-md cursor-pointer hover:bg-[rgba(0,0,0,0.1)] dark:hover:bg-[rgba(255,255,255,0.1)] transition-colors text-[#5b5b66] dark:text-white focus-visible:outline-0 focus-visible:ring-2 ring-blue-400'>
             <RefreshOutlined fontSize='small' />
           </button>
         </div>
@@ -270,7 +270,7 @@ export default function App() {
       </div>
 
       {/* Webview 区域 */}
-      <div className='flex-grow bg-white'>
+      <div className='flex-grow bg-white dark:bg-black'>
         {tabs.map(tab => (
           <webview
             key={tab.id}
@@ -336,7 +336,7 @@ export default function App() {
                   el.addEventListener('did-navigate-in-page', updateUrl);
                 })();
 
-                // favicon 和 loading 状态
+                // loading 状态
                 el.addEventListener('did-start-loading', () => {
                   console.log('startLoading', tab.id, webviewsRef.current.get(tab.id).src);
                   setTabs(tabs => tabs.map(t => (t.id === tab.id ? { ...t, loading: true } : t)));
@@ -346,6 +346,7 @@ export default function App() {
                   console.log('stopLoading', tab.id, el.getURL());
                   setTabs(tabs => tabs.map(t => (t.id === tab.id ? { ...t, loading: false } : t)));
 
+                  return;
                   // 尝试提取 favicon
                   el.executeJavaScript(
                     `(() => {
@@ -378,6 +379,29 @@ export default function App() {
                     })
                     .catch(() => {
                       // 忽略 JS 注入错误
+                    });
+                });
+
+                // favicon
+                el.addEventListener('page-favicon-updated', (e: any) => {
+                  const favicons = e.favicons as string[];
+                  console.log('page-favicon-updated', favicons);
+
+                  const faviconUrl = favicons[0];
+                  if (!faviconUrl) return;
+
+                  fetch(faviconUrl)
+                    .then(res => {
+                      if (!res.ok || !res.headers.get('content-type')?.includes('image/')) return null;
+                      return res.blob();
+                    })
+                    .then(blob => {
+                      if (!blob) return;
+                      const objectURL = URL.createObjectURL(blob);
+                      setTabs(tabs => tabs.map(t => (t.id === tab.id ? { ...t, favicon: objectURL } : t)));
+                    })
+                    .catch(err => {
+                      console.warn('Failed to fetch favicon:', err);
                     });
                 });
               }

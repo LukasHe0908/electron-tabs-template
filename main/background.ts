@@ -1,5 +1,5 @@
 import path from 'path';
-import { app, BrowserWindow, ipcMain, Menu, Rectangle, WebContentsView } from 'electron';
+import { app, BrowserWindow, ipcMain, Menu, nativeTheme } from 'electron';
 import serve from 'electron-serve';
 import contextMenu from 'electron-context-menu';
 import os from 'os';
@@ -36,6 +36,14 @@ function getProviderPath(params: string) {
     const port = process.argv[2];
     return `http://localhost:${port}${params}`;
   }
+}
+function getOverlayStyle() {
+  const isDark = nativeTheme.shouldUseDarkColors;
+  return {
+    color: isDark ? '#1f1e25' : '#eaeaed',
+    symbolColor: isDark ? '#fff' : '#000',
+    height: 42,
+  };
 }
 
 let mainWindow: BrowserWindow;
@@ -74,17 +82,18 @@ let mainWindow: BrowserWindow;
     height: 800,
     show: false,
     titleBarStyle: 'hidden',
-    titleBarOverlay: {
-      color: '#eaeaed',
-      symbolColor: '#000',
-      height: 42,
-    },
+    titleBarOverlay: getOverlayStyle(),
     roundedCorners: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       webSecurity: false,
       webviewTag: true,
     },
+  });
+
+  // 响应主题变化，更新 overlay 样式
+  nativeTheme.on('updated', () => {
+    mainWindow?.setTitleBarOverlay(getOverlayStyle());
   });
 
   mainWindow.loadURL(getProviderPath('/'));
