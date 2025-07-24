@@ -3,11 +3,12 @@ import { app, BrowserWindow, ipcMain, Menu, Rectangle, WebContentsView } from 'e
 import serve from 'electron-serve';
 import contextMenu from 'electron-context-menu';
 import os from 'os';
+import log from 'electron-log';
 import { createWindow } from './helpers';
 
 const isProd = process.env.NODE_ENV === 'production';
 if (isProd) {
-  serve({ directory: 'app' });
+  serve({ directory: 'build/app' });
 } else {
   app.setPath('userData', path.join(process.cwd(), '.data'));
 }
@@ -38,8 +39,6 @@ function getProviderPath(params: string) {
 }
 
 let mainWindow: BrowserWindow;
-const tabViews = new Map<string, WebContentsView>();
-let currentTabId: string | null = null;
 
 (async () => {
   await app.whenReady();
@@ -55,6 +54,20 @@ let currentTabId: string | null = null;
   });
 
   splashWindow.loadURL(getProviderPath('/splashScreen.html'));
+  splashWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL, isMainFrame) => {
+    console.log('💥 did-fail-load:');
+    console.log('  URL:', validatedURL);
+    console.log('  Error Code:', errorCode);
+    console.log('  Description:', errorDescription);
+    console.log('  Is Main Frame:', isMainFrame);
+
+    log.error('splashWindow load fail', {
+      url: validatedURL,
+      code: errorCode,
+      message: errorDescription,
+      mainFrame: isMainFrame,
+    });
+  });
 
   mainWindow = createWindow('main', {
     width: 1200,
@@ -75,10 +88,20 @@ let currentTabId: string | null = null;
   });
 
   mainWindow.loadURL(getProviderPath('/'));
-  // mainWindow.loadURL(getProviderPath('/tabs.html'));
 
-  mainWindow.webContents.on('did-fail-load', err => {
-    console.log(err);
+  mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL, isMainFrame) => {
+    console.log('💥 did-fail-load:');
+    console.log('  URL:', validatedURL);
+    console.log('  Error Code:', errorCode);
+    console.log('  Description:', errorDescription);
+    console.log('  Is Main Frame:', isMainFrame);
+
+    log.error('splashWindow load fail', {
+      url: validatedURL,
+      code: errorCode,
+      message: errorDescription,
+      mainFrame: isMainFrame,
+    });
   });
 
   // 页面加载完成后关闭 splash，显示主窗口
@@ -105,12 +128,6 @@ ipcMain.handle('getProviderPath', (e, path: string) => {
 });
 ipcMain.handle('getDirname', e => {
   return __dirname;
-});
-
-
-ipcMain.on('load-url', (e, id: string, url: string) => {
-  const view = tabViews.get(id);
-  view?.webContents.loadURL(url);
 });
 
 app.on('window-all-closed', () => {

@@ -7067,6 +7067,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"electron-log@npm:^5.4.1":
+  version: 5.4.1
+  resolution: "electron-log@npm:5.4.1"
+  checksum: 10c0/719be8e3ebe2afcc0b58fe0ed32fbec0f30224a1b552d59a58493b4b1f8dbba12dd7e4bce458ceb13d3ece8d5e8ff0000672ae08a3de7cd3e449a9c42f3416ce
+  languageName: node
+  linkType: hard
+
 "electron-publish@npm:26.0.11":
   version: 26.0.11
   resolution: "electron-publish@npm:26.0.11"
@@ -7118,6 +7125,7 @@ __metadata:
     electron: "npm:^37.2.3"
     electron-builder: "npm:26.0.12"
     electron-context-menu: "npm:^4.1.0"
+    electron-log: "npm:^5.4.1"
     electron-serve: "npm:^2.1.1"
     electron-store: "npm:^10.1.0"
     electron-tabs: "npm:^1.0.4"
