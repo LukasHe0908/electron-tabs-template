@@ -51,25 +51,27 @@ export default function App() {
     const webview = document.querySelector(`webview[data-id="${activeTab}"]`) as Electron.WebviewTag;
     if (webview?.canGoBack()) webview.goBack();
   };
-
   const goForward = () => {
     const webview = document.querySelector(`webview[data-id="${activeTab}"]`) as Electron.WebviewTag;
     if (webview?.canGoForward()) webview.goForward();
   };
-
   const reloadPage = () => {
     const webview = document.querySelector(`webview[data-id="${activeTab}"]`) as Electron.WebviewTag;
     webview?.reload();
   };
 
-  const addTab = (url = 'https://example.com') => {
-    console.log('addTab');
+  const addTab = (url = 'https://example.com', setActive = true) => {
+    if (!__dirname) {
+      console.log("addTab fail: can't load webview preload");
+    }
+    console.log('addTab', url, `setActive: ${setActive}`);
     const id = `tab-${Date.now()}`;
     setTabs(t => [...t, { id, title: '', url, loading: true }]);
-    setActiveTab(id);
-    setUrlInput(url);
+    if (setActive) {
+      setActiveTab(id);
+      setUrlInput(url);
+    }
   };
-
   const switchTab = (id: string) => {
     console.log('switchTab', id);
 
@@ -79,7 +81,6 @@ export default function App() {
       setUrlInput(tab.currentUrl);
     }
   };
-
   const closeTab = (id: string) => {
     const currentTabs = tabsRef.current;
     const currentActive = activeTabRef.current;
@@ -104,7 +105,6 @@ export default function App() {
       }
     }
   };
-
   const goToURL = () => {
     console.log('goToURL', activeTab, urlInput);
     if (activeTab) {
@@ -150,7 +150,12 @@ export default function App() {
     (async () => {
       setDirname(await window.electronAPI.getDirname());
     })();
-  });
+  }, []);
+  useEffect(() => {
+    if (__dirname) {
+      addTab();
+    }
+  }, [__dirname]);
 
   const buttonGroupRef = useRef<HTMLDivElement>(null);
   const { ref: containerRef, width: containerWidth } = useContainerWidth<HTMLDivElement>([buttonGroupRef]);
@@ -282,9 +287,9 @@ export default function App() {
                 webviewsRef.current.set(tab.id, el);
 
                 // 添加 ipc-message 监听
-                const handler = (e: any) => {
-                  if (e.channel === 'hotkey') {
-                    const key = e.args[0];
+                const handler = (event: Electron.IpcMessageEvent) => {
+                  if (event.channel === 'hotkey') {
+                    const key = event.args[0];
                     console.log(`[Tab ${tab.id}] Received hotkey from webview:`, key);
 
                     if (key === 'ctrl+w') closeTab(tab.id);
@@ -293,20 +298,23 @@ export default function App() {
                   }
                 };
                 el.addEventListener('ipc-message', handler);
-
-                // 清理
+                // 清理 ipc-message 监听
                 el.addEventListener('destroyed', () => {
                   el.removeEventListener('ipc-message', handler);
                 });
 
                 (async () => {
+                  // 页面加载失败
                   const errorPage = await window.electronAPI?.getProviderPath('/error/');
-                  el.addEventListener('did-fail-load', async (e: any) => {
+                  el.addEventListener('did-fail-load', async e => {
                     if (e.errorCode === -3) return; // 忽略 ERR_ABORTED
 
                     console.error('pageLoadFail', e);
 
-                    el.loadURL(errorPage + `?url=${encodeURIComponent(el.getURL())}`);
+                    el.loadURL(
+                      errorPage +
+                        `?url=${encodeURIComponent(el.getURL())}&description=${encodeURIComponent(e.errorDescription)}`
+                    );
                     setTabs(tabs => tabs.map(t => (t.id === tab.id ? { ...t, title: '页面加载失败' } : t)));
                   });
 
@@ -359,7 +367,7 @@ export default function App() {
 
                   fetch(faviconUrl)
                     .then(res => {
-                      if (!res.ok || (!res.headers.get('content-type')?.includes('/image') && false)) return null;
+                      if (!res.ok) return null;
                       return res.blob();
                     })
                     .then(blob => {
