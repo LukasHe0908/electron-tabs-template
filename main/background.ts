@@ -2,7 +2,7 @@
 import path from 'path';
 import { app, BrowserWindow, ipcMain, Menu, nativeTheme, webContents, WebContentsView } from 'electron';
 import serve from 'electron-serve';
-import contextMenu from 'electron-context-menu';
+import contextMenu, { Options as MenuOptions } from 'electron-context-menu';
 import log from 'electron-log';
 import { createWindow } from './helpers';
 
@@ -14,17 +14,27 @@ if (isProd) {
 }
 
 Menu.setApplicationMenu(null);
-const contextMenuOptions = {
+const contextMenuOptions: MenuOptions = {
   showSearchWithGoogle: false,
   showCopyLink: true,
-  showLearnSpelling: true,
-  showLookUpSelection: true,
+  showCopyImage: true,
+  showCopyImageAddress: true,
+  showCopyVideoAddress: true,
+  showSaveImageAs: true,
+  showSaveVideoAs: true,
+  showSelectAll: true,
+  showInspectElement: true,
   labels: {
     cut: '剪切',
     copy: '复制',
     paste: '粘贴',
     selectAll: '全选',
+    copyLink: '复制链接',
     copyImage: '复制图像',
+    copyImageAddress: '复制图像链接',
+    copyVideoAddress: '复制视频链接',
+    saveImageAs: '保存图像为',
+    saveVideoAs: '保存视频为',
     inspect: '检查',
   },
 };
@@ -54,7 +64,7 @@ function resizeView(view: WebContentsView) {
   if (!mainWindow) return;
   const { width, height } = mainWindow.getContentBounds();
   // x:0, y: title+address bar height = 42 + 41 = 83
-  view.setBounds({ x: 0, y: 82, width, height: height - 83 });
+  view.setBounds({ x: 0, y: 83, width, height: height - 83 });
 }
 
 (async () => {
