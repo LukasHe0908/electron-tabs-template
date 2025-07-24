@@ -10,8 +10,9 @@ node_modules
 next-env.d.ts
 
 # build
-/app
-dist
+/build
+# /app
+# dist
 
 # caches
 .data
