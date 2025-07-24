@@ -7,16 +7,16 @@ window.addEventListener('DOMContentLoaded', () => {
 
   Mousetrap.bind('ctrl+w', e => {
     e.preventDefault();
-    ipcRenderer.sendToHost('hotkey', 'ctrl+w');
+    ipcRenderer.send('hotkey', 'ctrl+w');
   });
 
   Mousetrap.bind('ctrl+t', e => {
     e.preventDefault();
-    ipcRenderer.sendToHost('hotkey', 'ctrl+t');
+    ipcRenderer.send('hotkey', 'ctrl+t');
   });
 
   Mousetrap.bind('f6', e => {
     e.preventDefault();
-    ipcRenderer.sendToHost('hotkey', 'f6');
+    ipcRenderer.send('hotkey', 'f6');
   });
 });

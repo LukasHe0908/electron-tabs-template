@@ -10,7 +10,6 @@ type Tab = {
   id: string;
   title: string;
   url: string;
-  currentUrl?: string;
   loading: boolean;
   favicon?: string | null;
 };
@@ -21,7 +20,6 @@ export default function App() {
   const tabsRef = useRef<Tab[]>([]);
   const activeTabRef = useRef<string | null>(null);
   const [urlInput, setUrlInput] = useState('');
-  const webviewsRef = useRef(new Map<string, Electron.WebviewTag>());
   const [canGoBack, setCanGoBack] = useState(false);
   const [canGoForward, setCanGoForward] = useState(false);
 
@@ -29,138 +27,228 @@ export default function App() {
     tabsRef.current = tabs;
   }, [tabs]);
 
+  // Clean Previous Views
+  useEffect(() => {
+    window.ipc?.invoke('clear-active-view');
+  }, []);
+
+  // IPC event listener
   useEffect(() => {
     activeTabRef.current = activeTab;
-    const webview = webviewsRef.current.get(activeTab);
-    if (!webview) return;
-    const updateNavState = () => {
-      setCanGoBack(webview.canGoBack());
-      setCanGoForward(webview.canGoForward());
+  }, [activeTab]);
+  useEffect(() => {
+    const handler = (message: any) => {
+      const { type, id, ...data } = message;
+      if (type === 'new_tab') {
+        console.log('new_tab', data);
+        const { url, fromId, disposition } = data;
+        // 根据 disposition 判断是否激活
+        const shouldActivate = disposition === 'foreground-tab' || disposition === 'default';
+
+        addTab(url, fromId, shouldActivate);
+      } else {
+        setTabs(prevTabs =>
+          prevTabs.map(tab => {
+            if (tab.id !== id) return tab;
+            const updated: Tab = { ...tab, ...data };
+            if (type === 'title') {
+              updated.title = data.title;
+            }
+            if (type === 'favicon') {
+              updated.favicon = Array.isArray(data.favicons) ? data.favicons[0] : undefined;
+            }
+            if (type === 'loading') {
+              updated.loading = data.loading;
+            }
+            if (type === 'navigate' || type === 'navigate_in_page') {
+              updated.url = data.url;
+              if (tab.id === activeTabRef.current) setUrlInput(data.url);
+              setCanGoBack(data.canGoBack);
+              setCanGoForward(data.canGoForward);
+            }
+            if (type === 'fail_load') {
+              setTabs(tabs => tabs.map(t => (t.id === tab.id ? { ...t, title: '页面加载失败' } : t)));
+            }
+            return updated;
+          })
+        );
+      }
+
+      if (id === activeTabRef.current && type === 'title') {
+        document.title = data.title || '新标签页';
+      }
     };
 
-    webview.addEventListener('did-navigate', updateNavState);
-    webview.addEventListener('did-navigate-in-page', updateNavState);
+    window.ipc?.on('tab-event', handler);
+    return () => {
+      window.ipc?.removeListener('tab-event', handler);
+    };
+  }, []);
+  useEffect(() => {
+    const handler = (message: any) => {
+      const { id, hotkey } = message;
+      if (id) {
+        switch (hotkey) {
+          case 'ctrl+w':
+            closeTab(id);
+            break;
+          case 'ctrl+t':
+            addTab();
+            break;
+          case 'f6':
+            const input = document.getElementById('url-input') as HTMLInputElement | null;
+            if (input) {
+              input.focus();
+              input.select();
+            }
+            break;
+
+          default:
+            break;
+        }
+      }
+    };
+    window.ipc?.on('hotkeyFromMain', handler);
 
     return () => {
-      webview.removeEventListener('did-navigate', updateNavState);
-      webview.removeEventListener('did-navigate-in-page', updateNavState);
+      window.ipc?.removeListener('hotkeyFromMain', handler);
     };
-  }, [activeTab]);
+  }, []);
 
-  const goBack = () => {
-    const webview = document.querySelector(`webview[data-id="${activeTab}"]`) as Electron.WebviewTag;
-    if (webview?.canGoBack()) webview.goBack();
-  };
-  const goForward = () => {
-    const webview = document.querySelector(`webview[data-id="${activeTab}"]`) as Electron.WebviewTag;
-    if (webview?.canGoForward()) webview.goForward();
-  };
-  const reloadPage = () => {
-    const webview = document.querySelector(`webview[data-id="${activeTab}"]`) as Electron.WebviewTag;
-    webview?.reload();
-  };
+  // Tab control functions
+  async function send(channel: string, ...args: any[]) {
+    return await window.ipc?.invoke(channel, ...args);
+  }
 
-  const addTab = (url = 'https://example.com', setActive = true) => {
-    if (!__dirname) {
-      console.log("addTab fail: can't load webview preload");
-    }
-    console.log('addTab', url, `setActive: ${setActive}`);
+  async function addTab(url = 'https://example.com', fromId?: string, setActive = true) {
     const id = `tab-${Date.now()}`;
-    setTabs(t => [...t, { id, title: '', url, loading: true }]);
+    await send('create-tab', id, url);
+
+    if (fromId) {
+      setTabs(prevTabs => {
+        const index = prevTabs.findIndex(t => t.id === fromId);
+        const newTab: Tab = { id, title: '', url, loading: true };
+
+        if (index >= 0) {
+          const newTabs = [...prevTabs];
+          newTabs.splice(index + 1, 0, newTab);
+          return newTabs;
+        } else {
+          return [...prevTabs, newTab]; // fallback
+        }
+      });
+    } else {
+      setTabs(t => [...t, { id, title: '', url, loading: true }]);
+    }
     if (setActive) {
       setActiveTab(id);
       setUrlInput(url);
     }
-  };
-  const switchTab = (id: string) => {
-    console.log('switchTab', id);
+  }
 
+  async function switchTab(id: string) {
+    await send('switch-tab', id);
     const tab = tabs.find(t => t.id === id);
     if (tab) {
       setActiveTab(id);
-      setUrlInput(tab.currentUrl);
+      setUrlInput(tab.url);
     }
-  };
-  const closeTab = (id: string) => {
+  }
+
+  async function closeTab(id: string) {
     const currentTabs = tabsRef.current;
     const currentActive = activeTabRef.current;
-
+    await send('close-tab', id);
     const index = currentTabs.findIndex(t => t.id === id);
     const newTabs = currentTabs.filter(tab => tab.id !== id);
 
     setTabs(newTabs);
 
-    // 如果关闭的是当前激活 tab，激活左边一个（或最右一个）
+    // 如果关闭的是当前激活 tab，激活左边一个
     if (currentActive === id) {
       if (newTabs.length > 0) {
         const nextIndex = index > 0 ? index - 1 : 0;
         const nextTab = newTabs[nextIndex];
+        await switchTab(nextTab.id);
         setActiveTab(nextTab.id);
-        setUrlInput(nextTab.currentUrl);
+        setUrlInput(nextTab.url);
       } else {
+        await switchTab(null);
         setActiveTab(null);
         setUrlInput('');
         setCanGoBack(false);
         setCanGoForward(false);
       }
     }
-  };
-  const goToURL = () => {
-    console.log('goToURL', activeTab, urlInput);
+  }
+
+  function goBack() {
+    send('navigate-tab-action', activeTab, 'BACK');
+  }
+  function goForward() {
+    send('navigate-tab-action', activeTab, 'FORWARD');
+  }
+  function reloadPage() {
+    send('navigate-tab', activeTab, urlInput);
+  }
+  function goToURL() {
+    if (!urlInput.trim()) return;
+    // 简单检测是否为 URL（包含 . 或以 http(s):// 开头）
+    let finalUrl = urlInput.trim();
+    const hasProtocol = /^https?:\/\//i.test(finalUrl);
+    const looksLikeDomain = /\./.test(finalUrl);
+
+    if (!hasProtocol) {
+      if (looksLikeDomain) {
+        // 没写协议但像域名，加上 https://
+        finalUrl = `https://${finalUrl}`;
+      } else {
+        // 否则当作搜索关键词
+        const query = encodeURIComponent(finalUrl);
+        finalUrl = `https://www.bing.com/search?q=${query}`;
+      }
+    }
+
     if (activeTab) {
-      setTabs(tabs => tabs.map(t => (t.id === activeTab ? { ...t, url: urlInput, currentUrl: urlInput } : t)));
+      setTabs(tabs => tabs.map(t => (t.id === activeTab ? { ...t, url: finalUrl } : t)));
+      send('navigate-tab', activeTab, finalUrl);
     } else {
-      addTab(urlInput);
+      addTab(finalUrl);
     }
-  };
+  }
 
-  const closeActiveTab = () => {
-    const currentActive = activeTabRef.current;
-    if (currentActive) {
-      closeTab(currentActive);
-    }
-  };
-  const focusUrlInput = () => {
-    const input = document.getElementById('url-input') as HTMLInputElement;
-    if (input) input.focus();
-  };
-
-  // 主页面快捷键
+  // Keyboard shortcuts
   useEffect(() => {
     Mousetrap.bind('ctrl+w', e => {
       e.preventDefault();
-      closeActiveTab(); // 关闭当前标签
+      closeTab(activeTab!);
     });
     Mousetrap.bind('ctrl+t', e => {
       e.preventDefault();
-      addTab(); // 添加新标签
+      addTab();
     });
     Mousetrap.bind('f6', e => {
       e.preventDefault();
-      focusUrlInput(); // 聚焦地址栏
+      const input = document.getElementById('url-input') as HTMLInputElement | null;
+      if (input) {
+        input.focus();
+        input.select();
+      }
     });
-
     return () => {
       Mousetrap.unbind(['ctrl+w', 'ctrl+t', 'f6']);
     };
-  }, []);
+  }, [activeTab, tabs]);
 
-  const [__dirname, setDirname] = useState('');
+  // Initialize
   useEffect(() => {
-    (async () => {
-      setDirname(await window.electronAPI.getDirname());
-    })();
+    addTab('https://example.com/');
   }, []);
-  useEffect(() => {
-    if (__dirname) {
-      addTab();
-    }
-  }, [__dirname]);
 
   const buttonGroupRef = useRef<HTMLDivElement>(null);
   const { ref: containerRef, width: containerWidth } = useContainerWidth<HTMLDivElement>([buttonGroupRef]);
   const totalGap = Math.max(0, (tabs.length - 1) * 4);
-  const tabWidth = Math.max(72, Math.min(220, (containerWidth - totalGap - 8) / tabs.length));
+  const tabWidth = Math.max(72, Math.min(220, (containerWidth - totalGap - 8) / (tabs.length || 1)));
 
   return (
     <div className='w-full h-screen flex flex-col bg-[#eaeaed] dark:bg-[#1f1e25]'>
@@ -276,118 +364,8 @@ export default function App() {
         />
       </div>
 
-      {/* Webview 区域 */}
-      <div className='flex-grow bg-white dark:bg-black'>
-        {tabs.map(tab => (
-          <webview
-            key={tab.id}
-            data-id={tab.id}
-            ref={(el: Electron.WebviewTag) => {
-              if (el && !webviewsRef.current.get(tab.id)) {
-                webviewsRef.current.set(tab.id, el);
-
-                // 添加 ipc-message 监听
-                const handler = (event: Electron.IpcMessageEvent) => {
-                  if (event.channel === 'hotkey') {
-                    const key = event.args[0];
-                    console.log(`[Tab ${tab.id}] Received hotkey from webview:`, key);
-
-                    if (key === 'ctrl+w') closeTab(tab.id);
-                    if (key === 'ctrl+t') addTab();
-                    if (key === 'f6') focusUrlInput();
-                  }
-                };
-                el.addEventListener('ipc-message', handler);
-                // 清理 ipc-message 监听
-                el.addEventListener('destroyed', () => {
-                  el.removeEventListener('ipc-message', handler);
-                });
-
-                (async () => {
-                  // 页面加载失败
-                  const errorPage = await window.electronAPI?.getProviderPath('/error/');
-                  el.addEventListener('did-fail-load', async e => {
-                    if (e.errorCode === -3) return; // 忽略 ERR_ABORTED
-
-                    console.error('pageLoadFail', e);
-
-                    el.loadURL(
-                      errorPage +
-                        `?url=${encodeURIComponent(el.getURL())}&description=${encodeURIComponent(e.errorDescription)}`
-                    );
-                    setTabs(tabs => tabs.map(t => (t.id === tab.id ? { ...t, title: '页面加载失败' } : t)));
-                  });
-
-                  // 标题更新
-                  el.addEventListener('page-title-updated', e => {
-                    const currentUrl = el.getURL();
-                    if (currentUrl.startsWith(errorPage)) return;
-
-                    const title = (e as any).title;
-                    console.log('pageTitleUpdated', tab.id, el.getURL(), title);
-
-                    setTabs(tabs => tabs.map(t => (t.id === tab.id ? { ...t, title } : t)));
-                  });
-
-                  // URL 更新
-                  const updateUrl = () => {
-                    const currentUrl = el.getURL();
-                    if (currentUrl.startsWith(errorPage)) return;
-
-                    console.log('updateUrl', tab.id, el.getURL(), el.getTitle());
-
-                    setTabs(tabs =>
-                      tabs.map(t => (t.id === tab.id ? { ...t, title: el.getTitle(), currentUrl: currentUrl } : t))
-                    );
-                    if (tab.id === activeTab) setUrlInput(currentUrl);
-                  };
-
-                  el.addEventListener('did-navigate', updateUrl);
-                  el.addEventListener('did-navigate-in-page', updateUrl);
-                })();
-
-                // loading 状态
-                el.addEventListener('did-start-loading', () => {
-                  console.log('startLoading', tab.id, webviewsRef.current.get(tab.id).src);
-                  setTabs(tabs => tabs.map(t => (t.id === tab.id ? { ...t, loading: true } : t)));
-                });
-                el.addEventListener('did-stop-loading', () => {
-                  // 更新 loading 状态
-                  console.log('stopLoading', tab.id, el.getURL());
-                  setTabs(tabs => tabs.map(t => (t.id === tab.id ? { ...t, loading: false } : t)));
-                });
-
-                // favicon
-                el.addEventListener('page-favicon-updated', (e: any) => {
-                  const favicons = e.favicons as string[];
-                  console.log('page-favicon-updated', favicons);
-
-                  const faviconUrl = favicons[0];
-                  if (!faviconUrl) return;
-
-                  fetch(faviconUrl)
-                    .then(res => {
-                      if (!res.ok) return null;
-                      return res.blob();
-                    })
-                    .then(blob => {
-                      if (!blob) return;
-                      const objectURL = URL.createObjectURL(blob);
-                      setTabs(tabs => tabs.map(t => (t.id === tab.id ? { ...t, favicon: objectURL } : t)));
-                    })
-                    .catch(err => {
-                      console.warn('Failed to fetch favicon:', err);
-                    });
-                });
-              }
-            }}
-            preload={`file://${__dirname}/preloadWebview.js`}
-            src={tab.url}
-            style={{ display: tab.id === activeTab ? 'flex' : 'none', width: '100%', height: '100%' }}
-            className='w-full h-full select-none'
-          />
-        ))}
-      </div>
+      {/* 内容 区域 */}
+      <div className='flex-grow bg-white dark:bg-black'></div>
     </div>
   );
 }

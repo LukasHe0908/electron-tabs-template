@@ -1,8 +1,8 @@
+/* background.ts */
 import path from 'path';
-import { app, BrowserWindow, ipcMain, Menu, nativeTheme } from 'electron';
+import { app, BrowserWindow, ipcMain, Menu, nativeTheme, webContents, WebContentsView } from 'electron';
 import serve from 'electron-serve';
 import contextMenu from 'electron-context-menu';
-import os from 'os';
 import log from 'electron-log';
 import { createWindow } from './helpers';
 
@@ -29,6 +29,10 @@ const contextMenuOptions = {
   },
 };
 
+let mainWindow: BrowserWindow;
+const tabMap = new Map<string, { view: WebContentsView }>();
+let activeView: WebContentsView | null = null;
+
 function getProviderPath(params: string) {
   if (isProd) {
     return `app://-${params}`;
@@ -46,7 +50,12 @@ function getOverlayStyle() {
   };
 }
 
-let mainWindow: BrowserWindow;
+function resizeView(view: WebContentsView) {
+  if (!mainWindow) return;
+  const { width, height } = mainWindow.getContentBounds();
+  // x:0, y: title+address bar height = 42 + 41 = 83
+  view.setBounds({ x: 0, y: 82, width, height: height - 83 });
+}
 
 (async () => {
   await app.whenReady();
@@ -87,7 +96,6 @@ let mainWindow: BrowserWindow;
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       webSecurity: false,
-      webviewTag: true,
     },
   });
 
@@ -95,7 +103,7 @@ let mainWindow: BrowserWindow;
   nativeTheme.on('updated', () => {
     mainWindow?.setTitleBarOverlay(getOverlayStyle());
   });
-
+  // load your main page
   mainWindow.loadURL(getProviderPath('/'));
 
   mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL, isMainFrame) => {
@@ -105,14 +113,13 @@ let mainWindow: BrowserWindow;
     console.log('  Description:', errorDescription);
     console.log('  Is Main Frame:', isMainFrame);
 
-    log.error('splashWindow load fail', {
+    log.error('mainWindow load fail', {
       url: validatedURL,
       code: errorCode,
       message: errorDescription,
       mainFrame: isMainFrame,
     });
   });
-
   // 页面加载完成后关闭 splash，显示主窗口
   mainWindow.once('ready-to-show', () => {
     if (splashWindow) {
@@ -124,20 +131,193 @@ let mainWindow: BrowserWindow;
       // mainWindow.webContents.openDevTools();
     }
   });
-  mainWindow.webContents.on('did-attach-webview', (_event, webviewWebContents) => {
-    contextMenu({
-      ...contextMenuOptions,
-      window: webviewWebContents, // 注入 webview 的 webContents
+
+  mainWindow.on('resize', () => {
+    tabMap.forEach(tab => {
+      resizeView(tab.view);
     });
   });
-})();
 
-ipcMain.handle('getProviderPath', (e, path: string) => {
-  return getProviderPath(path);
-});
-ipcMain.handle('getDirname', e => {
-  return __dirname;
-});
+  // IPC handlers for tab management
+  ipcMain.handle('clear-active-view', () => {
+    tabMap.forEach(tab => {
+      mainWindow.contentView.removeChildView(tab.view);
+    });
+    if (activeView) activeView = null;
+  });
+
+  ipcMain.handle('create-tab', async (_e, id: string, url: string) => {
+    const view = new WebContentsView({
+      webPreferences: {
+        preload: path.join(__dirname, 'preloadWebview.js'),
+      },
+    });
+    view.webContents.loadURL(url);
+    tabMap.set(id, { view });
+    mainWindow.contentView.addChildView(view);
+    resizeView(view);
+
+    // attach contextMenu
+    view.webContents.on('context-menu', contextMenu({ ...contextMenuOptions, window: view }));
+    // 标题 / favicon 更新
+    view.webContents.on('page-title-updated', (_ev, title, explicitSet) => {
+      console.log('tab-event', { type: 'title', id, title, explicitSet });
+      mainWindow.webContents.send('tab-event', { type: 'title', id, title, explicitSet });
+    });
+    view.webContents.on('page-favicon-updated', (_ev, favicons) => {
+      console.log('tab-event', { type: 'favicon', id, favicons });
+      mainWindow.webContents.send('tab-event', { type: 'favicon', id, favicons });
+    });
+    // 加载状态
+    view.webContents.on('did-start-loading', () => {
+      mainWindow.webContents.send('tab-event', { type: 'loading', id, loading: true });
+    });
+    view.webContents.on('did-stop-loading', () => {
+      mainWindow.webContents.send('tab-event', { type: 'loading', id, loading: false });
+    });
+    // 导航
+    view.webContents.on('did-navigate', (event, url, httpResponseCode, httpStatusText) => {
+      if (url.startsWith(getProviderPath('/error/'))) return;
+      console.log('tab-event', { type: 'navigate', url });
+      const canGoBack = view.webContents.navigationHistory.canGoBack();
+      const canGoForward = view.webContents.navigationHistory.canGoForward();
+      mainWindow.webContents.send('tab-event', {
+        type: 'navigate',
+        id,
+        url,
+        httpResponseCode,
+        httpStatusText,
+        canGoBack,
+        canGoForward,
+      });
+    });
+    view.webContents.on('did-navigate-in-page', (event, url, isMainFrame, frameProcessId, frameRoutingId) => {
+      if (url.startsWith(getProviderPath('/error/'))) return;
+      console.log('tab-event', { type: 'navigate_in_page', url });
+      const canGoBack = view.webContents.navigationHistory.canGoBack();
+      const canGoForward = view.webContents.navigationHistory.canGoForward();
+      mainWindow.webContents.send('tab-event', {
+        type: 'navigate_in_page',
+        id,
+        url,
+        isMainFrame,
+        frameProcessId,
+        frameRoutingId,
+        canGoBack,
+        canGoForward,
+      });
+    });
+    view.webContents.setWindowOpenHandler(({ url, features, disposition }) => {
+      console.log('Intercepted window.open for URL:', url);
+      mainWindow.webContents.send('tab-event', {
+        type: 'new_tab',
+        fromId: id,
+        url,
+        disposition,
+      });
+
+      return { action: 'deny' }; // 阻止默认新窗口打开
+    });
+    // 加载失败
+    view.webContents.on(
+      'did-fail-load',
+      (event, errorCode, errorDescription, validatedURL, isMainFrame, frameProcessId, frameRoutingId) => {
+        console.log('tab-event', { type: 'fail_load', errorDescription, validatedURL });
+
+        // 加载错误页
+        const errorPageUrl = getProviderPath('/error/');
+        view.webContents.loadURL(
+          errorPageUrl + `?url=${encodeURIComponent(validatedURL)}&description=${encodeURIComponent(errorDescription)}`
+        );
+
+        mainWindow.webContents.send('tab-event', {
+          type: 'fail_load',
+          id,
+          errorCode,
+          errorDescription,
+          validatedURL,
+          isMainFrame,
+          frameProcessId,
+          frameRoutingId,
+        });
+      }
+    );
+    return true;
+  });
+
+  ipcMain.handle('switch-tab', (_e, id: string) => {
+    if (activeView) {
+      mainWindow.contentView.removeChildView(activeView);
+      activeView = null;
+    }
+
+    const tab = tabMap.get(id);
+    if (tab) {
+      mainWindow.contentView.addChildView(tab.view);
+      activeView = tab.view;
+      resizeView(tab.view);
+      tab.view.webContents.focus();
+      return true;
+    }
+
+    return false;
+  });
+
+  ipcMain.handle('close-tab', (_e, id: string) => {
+    const tab = tabMap.get(id);
+    if (!tab) return false;
+    tab.view.webContents.close({ waitForBeforeUnload: false });
+    mainWindow.contentView.removeChildView(tab.view);
+
+    if (activeView === tab.view) {
+      activeView = null;
+    }
+    tabMap.delete(id);
+    if (tabMap.size === 0) {
+      mainWindow.webContents.focus();
+    }
+    return true;
+  });
+
+  ipcMain.handle('navigate-tab', (_e, id: string, url: string) => {
+    const tab = tabMap.get(id);
+    if (tab) tab.view.webContents.loadURL(url);
+  });
+  ipcMain.handle('navigate-tab-action', (_e, id: string, action: string) => {
+    const tab = tabMap.get(id);
+    if (tab) {
+      if (action === 'BACK') {
+        tab.view.webContents.navigationHistory.goBack();
+      } else if (action === 'FORWARD') {
+        tab.view.webContents.navigationHistory.goForward();
+      }
+    }
+  });
+  ipcMain.on('hotkey', (event, hotkey) => {
+    // Like 2,3,...
+    const senderId = event.sender.id;
+
+    // 找到对应 tab 的 id
+    let matchedTabId: string | null = null;
+    for (const [id, { view }] of tabMap.entries()) {
+      if (view.webContents.id === senderId) {
+        matchedTabId = id;
+        break;
+      }
+    }
+
+    if (matchedTabId) {
+      console.log(`[hotkey] From tab ${matchedTabId}: ${hotkey}`);
+      if (hotkey === 'f6') {
+        mainWindow.webContents.focus();
+      }
+      mainWindow.webContents.send('hotkeyFromMain', {
+        id: matchedTabId,
+        hotkey,
+      });
+    }
+  });
+})();
 
 app.on('window-all-closed', () => {
   app.quit();
