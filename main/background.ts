@@ -171,11 +171,11 @@ function resizeView(view: WebContentsView) {
     view.webContents.on('context-menu', contextMenu({ ...contextMenuOptions, window: view }));
     // 标题 / favicon 更新
     view.webContents.on('page-title-updated', (_ev, title, explicitSet) => {
-      console.log('tab-event', { type: 'title', id, title, explicitSet });
+      console.log('title', { id, title, explicitSet });
       mainWindow.webContents.send('tab-event', { type: 'title', id, title, explicitSet });
     });
     view.webContents.on('page-favicon-updated', (_ev, favicons) => {
-      console.log('tab-event', { type: 'favicon', id, favicons });
+      console.log('favicon', { id, favicons });
       mainWindow.webContents.send('tab-event', { type: 'favicon', id, favicons });
     });
     // 加载状态
@@ -188,7 +188,7 @@ function resizeView(view: WebContentsView) {
     // 导航
     view.webContents.on('did-navigate', (event, url, httpResponseCode, httpStatusText) => {
       if (url.startsWith(getProviderPath('/error/'))) return;
-      console.log('tab-event', { type: 'navigate', url });
+      console.log('navigate', { url });
       const canGoBack = view.webContents.navigationHistory.canGoBack();
       const canGoForward = view.webContents.navigationHistory.canGoForward();
       mainWindow.webContents.send('tab-event', {
@@ -203,7 +203,7 @@ function resizeView(view: WebContentsView) {
     });
     view.webContents.on('did-navigate-in-page', (event, url, isMainFrame, frameProcessId, frameRoutingId) => {
       if (url.startsWith(getProviderPath('/error/'))) return;
-      console.log('tab-event', { type: 'navigate_in_page', url });
+      console.log('navigate_in_page', { url });
       const canGoBack = view.webContents.navigationHistory.canGoBack();
       const canGoForward = view.webContents.navigationHistory.canGoForward();
       mainWindow.webContents.send('tab-event', {
@@ -232,12 +232,22 @@ function resizeView(view: WebContentsView) {
     view.webContents.on(
       'did-fail-load',
       (event, errorCode, errorDescription, validatedURL, isMainFrame, frameProcessId, frameRoutingId) => {
-        console.log('tab-event', { type: 'fail_load', errorDescription, validatedURL });
+        // The full list of error codes: https://source.chromium.org/chromium/chromium/src/+/main:net/base/net_error_list.h
+        console.log('fail_load', {
+          errorCode,
+          errorDescription,
+          validatedURL,
+        });
+
+        if (errorCode === -3) return;
 
         // 加载错误页
         const errorPageUrl = getProviderPath('/error/');
         view.webContents.loadURL(
-          errorPageUrl + `?url=${encodeURIComponent(validatedURL)}&description=${encodeURIComponent(errorDescription)}`
+          errorPageUrl +
+            `?url=${encodeURIComponent(validatedURL)}&description=${encodeURIComponent(
+              `${errorCode}${errorDescription && ' ' + errorDescription}`
+            )}`
         );
 
         mainWindow.webContents.send('tab-event', {
