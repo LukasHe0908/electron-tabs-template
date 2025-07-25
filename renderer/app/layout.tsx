@@ -11,7 +11,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
   useEffect(() => {
     const matchDark = window.matchMedia('(prefers-color-scheme: dark)');
-    setThemeClass(matchDark.matches ? 'dark' : '');
     const updateTheme = () => {
       setThemeClass(matchDark.matches ? 'dark' : '');
     };

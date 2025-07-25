@@ -1,7 +1,7 @@
 'use client';
 import { CircularProgress } from '@mui/material';
 import { CloseOutlined, PublicOutlined } from '@mui/icons-material';
-import { useState, MouseEvent } from 'react';
+import { useState, useEffect, MouseEvent } from 'react';
 
 export interface TabItemProps {
   id: string;
@@ -25,14 +25,45 @@ export default function TabItem({
   onClose,
 }: TabItemProps) {
   const showClose = active || width >= 140;
-  const [faviconLoadFail, setFaviconLoadFail] = useState(false);
+  const [faviconBlob, setFaviconBlob] = useState<string | null>(null);
+  useEffect(() => {
+    if (!favicon) return;
+
+    let cancelled = false;
+    let oldUrl: string | null = null;
+
+    fetch(favicon, {
+      cache: 'force-cache',
+      referrerPolicy: 'no-referrer',
+    })
+      .then(res => {
+        if (!res.ok || (!res.headers.get('Content-Type')?.startsWith('image') && !favicon.startsWith('app://'))) {
+          throw new Error('Not an image');
+        }
+        return res.blob();
+      })
+      .then(blob => {
+        if (cancelled) return;
+        const url = URL.createObjectURL(blob);
+        oldUrl = url;
+        setFaviconBlob(url);
+      })
+      .catch(() => {});
+
+    return () => {
+      cancelled = true;
+      if (oldUrl) {
+        URL.revokeObjectURL(oldUrl);
+      }
+    };
+  }, [favicon]);
 
   return (
     <div
       className={`group flex items-center px-1 py-1 h-full rounded-md text-sm select-none transition-colors text-black dark:text-white ${
         active
           ? 'bg-white shadow-sm dark:bg-[#53535f]'
-          : 'bg-[#eaeaed] dark:bg-[#1f1e25] hover:bg-gray-200 dark:hover:bg-[#38373d]'
+          : 'bg-[#eaeaed] dark:bg-[#1f1e25] hover:bg-[#d2d2d6] dark:hover:bg-[#38373d]'
       }
       `}
       style={{
@@ -46,14 +77,13 @@ export default function TabItem({
       <div className={`w-4 h-4 flex items-center justify-center shrink-0 ${width < 140 ? 'mr-1' : 'mr-2 ml-1'}`}>
         {loading ? (
           <CircularProgress size={14} thickness={5} />
-        ) : favicon && !faviconLoadFail ? (
+        ) : favicon && faviconBlob ? (
           <img
-            src={favicon}
+            src={faviconBlob}
             alt='favicon'
             className='w-4 h-4'
-            onError={e => {
-              setFaviconLoadFail(true);
-              // e.currentTarget.style.display = 'none';
+            onError={() => {
+              setFaviconBlob(null);
             }}
           />
         ) : (
