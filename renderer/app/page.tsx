@@ -1,8 +1,12 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
-import { Button, Input, ScrollShadow } from '@heroui/react';
+import { Button, Input } from '@heroui/react';
 import { AddOutlined, RefreshOutlined, ArrowBackOutlined, ArrowForwardOutlined } from '@mui/icons-material';
 import Mousetrap from 'mousetrap';
+import { DndContext, PointerSensor, useSensor, useSensors, closestCenter } from '@dnd-kit/core';
+import { SortableContext, useSortable, horizontalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { restrictToHorizontalAxis, restrictToParentElement } from '@dnd-kit/modifiers';
 import TabItem from '../components/TabItem';
 import { useContainerWidth } from '../components/hooks/useContainerWidth';
 
@@ -22,6 +26,14 @@ export default function App() {
   const [urlInput, setUrlInput] = useState('');
   const [canGoBack, setCanGoBack] = useState(false);
   const [canGoForward, setCanGoForward] = useState(false);
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 5,
+      },
+    })
+  );
+  const [activeId, setActiveId] = useState<string | null>(null);
 
   useEffect(() => {
     tabsRef.current = tabs;
@@ -75,7 +87,7 @@ export default function App() {
       }
 
       if (id === activeTabRef.current && type === 'title') {
-        document.title = data.title || '新标签页';
+        document.title = `${data.title || '新标签页'} - ${'Electron Tabs Template'}`;
       }
     };
 
@@ -259,7 +271,7 @@ export default function App() {
         <div
           id='tab-bar'
           ref={containerRef}
-          className='grow flex items-center h-[42px] px-[4px] py-1 overflow-x-auto scrollbar-hide gap-[4px]'
+          className='grow flex items-center h-[42px] px-[4px] py-1 overflow-x-auto overflow-y-hidden scrollbar-hide'
           onWheel={event => {
             const ele = document.getElementById('tab-bar');
             if (event.deltaY !== 0) {
@@ -267,31 +279,50 @@ export default function App() {
               ele?.scrollBy({ left: event.deltaY });
             }
           }}>
-          {tabs.map(tab => {
-            // console.log(containerWidth);
-
-            return (
-              <div key={tab.id} style={{ width: `${tabWidth}px`, height: '100%' }}>
-                <TabItem
-                  id={tab.id}
-                  title={tab.title}
-                  favicon={tab.favicon}
-                  loading={tab.loading}
-                  active={tab.id === activeTab}
-                  width={tabWidth}
-                  onClick={() => switchTab(tab.id)}
-                  onClose={() => closeTab(tab.id)}
-                />
-              </div>
-            );
-          })}
-          <div ref={buttonGroupRef} className='flex gap-1 h-full'>
+          <div className='flex flex-row gap-[4px] h-full'>
+            <DndContext
+              sensors={sensors}
+              modifiers={[
+                restrictToHorizontalAxis, // 仅允许左右拖动
+                restrictToParentElement, // 仅允许在 tab 区域内拖动
+              ]}
+              collisionDetection={closestCenter}
+              onDragStart={({ active }) => {
+                setActiveId(active.id as string);
+              }}
+              onDragCancel={() => setActiveId(null)}
+              onDragEnd={({ active, over }) => {
+                setActiveId(null);
+                if (active.id !== over?.id) {
+                  const oldIndex = tabs.findIndex(t => t.id === active.id);
+                  const newIndex = tabs.findIndex(t => t.id === over?.id);
+                  if (oldIndex !== -1 && newIndex !== -1) {
+                    setTabs(tabs => arrayMove(tabs, oldIndex, newIndex));
+                  }
+                }
+              }}>
+              <SortableContext items={tabs.map(t => t.id)} strategy={horizontalListSortingStrategy}>
+                {tabs.map(tab => (
+                  <SortableTab
+                    key={tab.id}
+                    tab={tab}
+                    isDragging={tab.id === activeId}
+                    width={tabWidth}
+                    isActive={tab.id === activeTab}
+                    onClick={() => switchTab(tab.id)}
+                    onClose={() => closeTab(tab.id)}
+                  />
+                ))}
+              </SortableContext>
+            </DndContext>
+          </div>
+          <div ref={buttonGroupRef} className='flex gap-1 h-full pl-1'>
             {/* 添加新标签按钮 */}
             <button
               onClick={() => {
                 addTab();
               }}
-              className='h-full aspect-square flex items-center justify-center rounded-md cursor-pointer hover:bg-[rgba(0,0,0,0.1)] dark:hover:bg-[rgba(255,255,255,0.1)] transition-colors text-gray-800 dark:text-gray-200 focus-visible:outline-0 focus-visible:ring-2 ring-blue-400'>
+              className='h-full aspect-square flex items-center justify-center rounded-md hover:bg-[rgba(0,0,0,0.1)] dark:hover:bg-[rgba(255,255,255,0.1)] transition-colors text-gray-800 dark:text-gray-200 focus-visible:outline-0 focus-visible:ring-2 ring-blue-400'>
               <AddOutlined style={{ fontSize: '20px' }} />
             </button>
             {/* Debug Refresh Button */}
@@ -299,11 +330,10 @@ export default function App() {
               onClick={() => {
                 location.reload();
               }}
-              className='h-full aspect-square flex items-center justify-center rounded-md cursor-pointer hover:bg-[rgba(0,0,0,0.1)] dark:hover:bg-[rgba(255,255,255,0.1)] transition-colors text-gray-800 dark:text-gray-200 focus-visible:outline-0 focus-visible:ring-2 ring-blue-400'>
+              className='h-full aspect-square flex items-center justify-center rounded-md hover:bg-[rgba(0,0,0,0.1)] dark:hover:bg-[rgba(255,255,255,0.1)] transition-colors text-gray-800 dark:text-gray-200 focus-visible:outline-0 focus-visible:ring-2 ring-blue-400'>
               <RefreshOutlined style={{ fontSize: '20px' }} />
             </button>
           </div>
-
           <div className='h-full grow-1 [app-region:drag]'></div>
         </div>
         {/* 窗口控制菜单 */}
@@ -319,7 +349,7 @@ export default function App() {
               goBack();
             }}
             disabled={!canGoBack}
-            className='h-full aspect-square flex items-center justify-center rounded-md cursor-pointer hover:bg-[rgba(0,0,0,0.1)] dark:hover:bg-[rgba(255,255,255,0.1)] transition-colors text-[#5b5b66] dark:text-white disabled:text-[#c8c8ce] dark:disabled:text-[#5b5a60] focus-visible:outline-0 focus-visible:ring-2 ring-blue-400'>
+            className='h-full aspect-square flex items-center justify-center rounded-md not-disabled:hover:bg-[rgba(0,0,0,0.1)] dark:not-disabled:hover:bg-[rgba(255,255,255,0.1)] transition-colors text-[#5b5b66] dark:text-white disabled:text-[#c8c8ce] dark:disabled:text-[#5b5a60] focus-visible:outline-0 focus-visible:ring-2 ring-blue-400'>
             <ArrowBackOutlined fontSize='small' />
           </button>
           <button
@@ -327,14 +357,14 @@ export default function App() {
               goForward();
             }}
             disabled={!canGoForward}
-            className='h-full aspect-square flex items-center justify-center rounded-md cursor-pointer hover:bg-[rgba(0,0,0,0.1)] dark:hover:bg-[rgba(255,255,255,0.1)] transition-colors text-[#5b5b66] dark:text-white disabled:text-[#c8c8ce] dark:disabled:text-[#5b5a60] focus-visible:outline-0 focus-visible:ring-2 ring-blue-400'>
+            className='h-full aspect-square flex items-center justify-center rounded-md not-disabled:hover:bg-[rgba(0,0,0,0.1)] dark:not-disabled:hover:bg-[rgba(255,255,255,0.1)] transition-colors text-[#5b5b66] dark:text-white disabled:text-[#c8c8ce] dark:disabled:text-[#5b5a60] focus-visible:outline-0 focus-visible:ring-2 ring-blue-400'>
             <ArrowForwardOutlined fontSize='small' />
           </button>
           <button
             onClick={() => {
               reloadPage();
             }}
-            className='h-full aspect-square flex items-center justify-center rounded-md cursor-pointer hover:bg-[rgba(0,0,0,0.1)] dark:hover:bg-[rgba(255,255,255,0.1)] transition-colors text-[#5b5b66] dark:text-white focus-visible:outline-0 focus-visible:ring-2 ring-blue-400'>
+            className='h-full aspect-square flex items-center justify-center rounded-md hover:bg-[rgba(0,0,0,0.1)] dark:hover:bg-[rgba(255,255,255,0.1)] transition-colors text-[#5b5b66] dark:text-white focus-visible:outline-0 focus-visible:ring-2 ring-blue-400'>
             <RefreshOutlined fontSize='small' />
           </button>
         </div>
@@ -366,6 +396,46 @@ export default function App() {
 
       {/* 内容 区域 */}
       <div className='flex-grow bg-white dark:bg-black'></div>
+    </div>
+  );
+}
+
+function SortableTab({
+  tab,
+  width,
+  isActive,
+  onClick,
+  onClose,
+  isDragging,
+}: {
+  tab: Tab;
+  width: number;
+  isActive: boolean;
+  onClick: () => void;
+  onClose: () => void;
+  isDragging: boolean;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: tab.id });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    width: `${width}px`,
+    height: '100%',
+    zIndex: isDragging ? 999999 : 'auto',
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
+      <TabItem
+        id={tab.id}
+        title={tab.title}
+        favicon={tab.favicon}
+        loading={tab.loading}
+        active={isActive}
+        width={width}
+        onClick={onClick}
+        onClose={onClose}
+      />
     </div>
   );
 }

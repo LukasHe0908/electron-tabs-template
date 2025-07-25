@@ -29,8 +29,10 @@ export default function TabItem({
 
   return (
     <div
-      className={`group flex items-center px-1 py-1 h-full rounded-md text-sm cursor-pointer select-none transition-colors text-black dark:text-white ${
-        active ? 'bg-white shadow-sm dark:bg-[#53535f]' : 'hover:bg-gray-200 dark:hover:bg-[#38373d]'
+      className={`group flex items-center px-1 py-1 h-full rounded-md text-sm select-none transition-colors text-black dark:text-white ${
+        active
+          ? 'bg-white shadow-sm dark:bg-[#53535f]'
+          : 'bg-[#eaeaed] dark:bg-[#1f1e25] hover:bg-gray-200 dark:hover:bg-[#38373d]'
       }
       `}
       style={{
@@ -60,23 +62,23 @@ export default function TabItem({
       </div>
 
       {/* 标题 + 遮罩 */}
-      <div className='relative flex-1 min-w-0'>
-        <span className='block text-clip overflow-hidden whitespace-nowrap text-sm'>{title || '新标签页'}</span>
+      <div className='relative flex-1 min-w-0 overflow-hidden'>
+        <span className='block text-clip overflow-hidden whitespace-nowrap text-sm [mask-image:linear-gradient(to_right,#000_calc(100%_-_16px),transparent)]'>
+          {title || '新标签页'}
+        </span>
       </div>
 
       {/* 关闭按钮 */}
-      {showClose && (
-        <div
-          className={`h-full aspect-square flex items-center justify-center shrink-0 text-gray-800 dark:text-white hover:bg-[rgba(0,0,0,0.1)] rounded-md transition-colors p-1  ${
-            width > 140 && 'ml-1'
-          }`}
-          onClick={e => {
-            e.stopPropagation();
-            onClose?.(e);
-          }}>
-          <CloseOutlined style={{ fontSize: '14px' }} />
-        </div>
-      )}
+      <div
+        className={`h-full aspect-square flex items-center justify-center shrink-0 text-gray-800 dark:text-white hover:bg-[rgba(0,0,0,0.1)] dark:hover:bg-[rgba(255,255,255,0.1)] rounded-md transition-colors p-1  ${
+          width > 140 && 'ml-1'
+        } ${!showClose && 'hidden group-hover:flex'}`}
+        onClick={e => {
+          e.stopPropagation();
+          onClose?.(e);
+        }}>
+        <CloseOutlined style={{ fontSize: '14px' }} />
+      </div>
     </div>
   );
 }
