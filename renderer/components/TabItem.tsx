@@ -1,8 +1,7 @@
 'use client';
-
 import { CircularProgress } from '@mui/material';
 import { CloseOutlined, PublicOutlined } from '@mui/icons-material';
-import { MouseEvent } from 'react';
+import { useState, MouseEvent } from 'react';
 
 export interface TabItemProps {
   id: string;
@@ -26,6 +25,7 @@ export default function TabItem({
   onClose,
 }: TabItemProps) {
   const showClose = active || width >= 140;
+  const [faviconLoadFail, setFaviconLoadFail] = useState(false);
 
   return (
     <div
@@ -44,13 +44,14 @@ export default function TabItem({
       <div className={`w-4 h-4 flex items-center justify-center shrink-0 ${width < 140 ? 'mr-1' : 'mr-2 ml-1'}`}>
         {loading ? (
           <CircularProgress size={14} thickness={5} />
-        ) : favicon ? (
+        ) : favicon && !faviconLoadFail ? (
           <img
             src={favicon}
             alt='favicon'
             className='w-4 h-4'
             onError={e => {
-              e.currentTarget.style.display = 'none';
+              setFaviconLoadFail(true);
+              // e.currentTarget.style.display = 'none';
             }}
           />
         ) : (

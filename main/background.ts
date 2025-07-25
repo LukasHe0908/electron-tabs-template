@@ -296,10 +296,11 @@ function resizeView(view: WebContentsView) {
   ipcMain.handle('navigate-tab-action', (_e, id: string, action: string) => {
     const tab = tabMap.get(id);
     if (tab) {
+      const navigationHistory = tab.view.webContents.navigationHistory;
       if (action === 'BACK') {
-        tab.view.webContents.navigationHistory.goBack();
+        if (navigationHistory.canGoBack()) navigationHistory.goBack();
       } else if (action === 'FORWARD') {
-        tab.view.webContents.navigationHistory.goForward();
+        if (navigationHistory.canGoForward()) navigationHistory.goForward();
       }
     }
   });
