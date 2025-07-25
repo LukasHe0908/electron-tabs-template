@@ -48,7 +48,9 @@ export default function TabItem({
         oldUrl = url;
         setFaviconBlob(url);
       })
-      .catch(() => {});
+      .catch(() => {
+        setFaviconBlob(null);
+      });
 
     return () => {
       cancelled = true;

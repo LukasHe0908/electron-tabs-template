@@ -24,6 +24,7 @@ export default function App() {
   const tabsRef = useRef<Tab[]>([]);
   const activeTabRef = useRef<string | null>(null);
   const [urlInput, setUrlInput] = useState('');
+  const urlInputRef = useRef('');
   const [canGoBack, setCanGoBack] = useState(false);
   const [canGoForward, setCanGoForward] = useState(false);
   const sensors = useSensors(
@@ -38,6 +39,9 @@ export default function App() {
   useEffect(() => {
     tabsRef.current = tabs;
   }, [tabs]);
+  useEffect(() => {
+    urlInputRef.current = urlInput;
+  }, [urlInput]);
 
   // Clean Previous Views
   useEffect(() => {
@@ -98,6 +102,8 @@ export default function App() {
   }, []);
   useEffect(() => {
     const handler = (message: any) => {
+      const currentActive = activeTabRef.current;
+
       const { id, hotkey } = message;
       if (id) {
         switch (hotkey) {
@@ -106,6 +112,21 @@ export default function App() {
             break;
           case 'ctrl+t':
             addTab();
+            break;
+          case 'ctrl+r':
+            if (currentActive) reloadPage(currentActive);
+            break;
+          case 'ctrl+pageup':
+            switchTabRelative(-1);
+            break;
+          case 'ctrl+pagedown':
+            switchTabRelative(1);
+            break;
+          case 'alt+left':
+            if (currentActive) goBack(currentActive);
+            break;
+          case 'alt+right':
+            if (currentActive) goForward(currentActive);
             break;
           case 'f6':
             const input = document.getElementById('url-input') as HTMLInputElement | null;
@@ -159,8 +180,9 @@ export default function App() {
   }
 
   async function switchTab(id: string) {
+    const currentTabs = tabsRef.current;
     await send('switch-tab', id);
-    const tab = tabs.find(t => t.id === id);
+    const tab = currentTabs.find(t => t.id === id);
     if (tab) {
       setActiveTab(id);
       setUrlInput(tab.url);
@@ -194,19 +216,33 @@ export default function App() {
     }
   }
 
-  function goBack() {
-    send('navigate-tab-action', activeTab, 'BACK');
+  async function switchTabRelative(offset: number) {
+    const currentTabs = tabsRef.current;
+    const currentActive = activeTabRef.current;
+    const index = currentTabs.findIndex(t => t.id === currentActive);
+    if (index === -1) return;
+    const newIndex = (index + offset + currentTabs.length) % currentTabs.length;
+    const newTab = currentTabs[newIndex];
+    if (newTab) {
+      await switchTab(newTab.id);
+    }
   }
-  function goForward() {
-    send('navigate-tab-action', activeTab, 'FORWARD');
+
+  function goBack(tabId?: string) {
+    send('navigate-tab-action', tabId, 'BACK');
   }
-  function reloadPage() {
-    send('navigate-tab', activeTab, urlInput);
+  function goForward(tabId: string) {
+    send('navigate-tab-action', tabId, 'FORWARD');
   }
-  function goToURL() {
-    if (!urlInput.trim()) return;
+  function reloadPage(tabId: string) {
+    send('navigate-tab', tabId, urlInputRef.current);
+  }
+  function goToURL(tabId: string, url?: string) {
+    let finalUrl = urlInputRef.current;
+    if (url) finalUrl = url;
+    finalUrl = finalUrl.trim();
+    if (!finalUrl) return;
     // 简单检测是否为 URL（包含 . 或以 http(s):// 开头）
-    let finalUrl = urlInput.trim();
     const hasProtocol = /^https?:\/\//i.test(finalUrl);
     const looksLikeDomain = /\./.test(finalUrl);
 
@@ -221,9 +257,9 @@ export default function App() {
       }
     }
 
-    if (activeTab) {
-      setTabs(tabs => tabs.map(t => (t.id === activeTab ? { ...t, url: finalUrl } : t)));
-      send('navigate-tab', activeTab, finalUrl);
+    if (tabId) {
+      setTabs(tabs => tabs.map(t => (t.id === tabId ? { ...t, url: finalUrl } : t)));
+      send('navigate-tab', tabId, finalUrl);
     } else {
       addTab(finalUrl);
     }
@@ -239,6 +275,26 @@ export default function App() {
       e.preventDefault();
       addTab();
     });
+    Mousetrap.bind(['ctrl+r', 'f5'], e => {
+      e.preventDefault();
+      reloadPage(activeTab);
+    });
+    Mousetrap.bind('ctrl+pageup', e => {
+      e.preventDefault();
+      switchTabRelative(-1);
+    });
+    Mousetrap.bind('ctrl+pagedown', e => {
+      e.preventDefault();
+      switchTabRelative(1);
+    });
+    Mousetrap.bind('alt+left', e => {
+      e.preventDefault();
+      goBack(activeTab);
+    });
+    Mousetrap.bind('alt+right', e => {
+      e.preventDefault();
+      goForward(activeTab);
+    });
     Mousetrap.bind('f6', e => {
       e.preventDefault();
       const input = document.getElementById('url-input') as HTMLInputElement | null;
@@ -248,7 +304,17 @@ export default function App() {
       }
     });
     return () => {
-      Mousetrap.unbind(['ctrl+w', 'ctrl+t', 'f6']);
+      Mousetrap.unbind([
+        'ctrl+w',
+        'ctrl+t',
+        'ctrl+r',
+        'f5',
+        'ctrl+pageup',
+        'ctrl+pagedown',
+        'alt+left',
+        'alt+right',
+        'f6',
+      ]);
     };
   }, [activeTab, tabs]);
 
@@ -346,7 +412,7 @@ export default function App() {
         <div className='flex gap-1 h-full'>
           <button
             onClick={() => {
-              goBack();
+              goBack(activeTab);
             }}
             disabled={!canGoBack}
             className='h-full aspect-square flex items-center justify-center rounded-md not-disabled:hover:bg-[rgba(0,0,0,0.1)] dark:not-disabled:hover:bg-[rgba(255,255,255,0.1)] transition-colors text-[#5b5b66] dark:text-white disabled:text-[#c8c8ce] dark:disabled:text-[#5b5a60] focus-visible:outline-0 focus-visible:ring-2 ring-blue-400'>
@@ -354,7 +420,7 @@ export default function App() {
           </button>
           <button
             onClick={() => {
-              goForward();
+              goForward(activeTab);
             }}
             disabled={!canGoForward}
             className='h-full aspect-square flex items-center justify-center rounded-md not-disabled:hover:bg-[rgba(0,0,0,0.1)] dark:not-disabled:hover:bg-[rgba(255,255,255,0.1)] transition-colors text-[#5b5b66] dark:text-white disabled:text-[#c8c8ce] dark:disabled:text-[#5b5a60] focus-visible:outline-0 focus-visible:ring-2 ring-blue-400'>
@@ -362,7 +428,7 @@ export default function App() {
           </button>
           <button
             onClick={() => {
-              reloadPage();
+              reloadPage(activeTab);
             }}
             className='h-full aspect-square flex items-center justify-center rounded-md hover:bg-[rgba(0,0,0,0.1)] dark:hover:bg-[rgba(255,255,255,0.1)] transition-colors text-[#5b5b66] dark:text-white focus-visible:outline-0 focus-visible:ring-2 ring-blue-400'>
             <RefreshOutlined fontSize='small' />
@@ -388,7 +454,7 @@ export default function App() {
           onKeyDown={e => {
             let event: KeyboardEvent = e;
             if (event.key === 'Enter') {
-              goToURL();
+              goToURL(activeTab);
             }
           }}
         />
