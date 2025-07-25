@@ -95,9 +95,9 @@ export default function App() {
       }
     };
 
-    window.ipc?.on('tab-event', handler);
+    window.ipc?.on('tabEvent', handler);
     return () => {
-      window.ipc?.removeListener('tab-event', handler);
+      window.ipc?.removeListener('tabEvent', handler);
     };
   }, []);
   useEffect(() => {

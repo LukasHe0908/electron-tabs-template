@@ -172,18 +172,18 @@ function resizeView(view: WebContentsView) {
     // 标题 / favicon 更新
     view.webContents.on('page-title-updated', (_ev, title, explicitSet) => {
       console.log('title', { id, title, explicitSet });
-      mainWindow.webContents.send('tab-event', { type: 'title', id, title, explicitSet });
+      mainWindow.webContents.send('tabEvent', { type: 'title', id, title, explicitSet });
     });
     view.webContents.on('page-favicon-updated', (_ev, favicons) => {
       console.log('favicon', { id, favicons });
-      mainWindow.webContents.send('tab-event', { type: 'favicon', id, favicons });
+      mainWindow.webContents.send('tabEvent', { type: 'favicon', id, favicons });
     });
     // 加载状态
     view.webContents.on('did-start-loading', () => {
-      mainWindow.webContents.send('tab-event', { type: 'loading', id, loading: true });
+      mainWindow.webContents.send('tabEvent', { type: 'loading', id, loading: true });
     });
     view.webContents.on('did-stop-loading', () => {
-      mainWindow.webContents.send('tab-event', { type: 'loading', id, loading: false });
+      mainWindow.webContents.send('tabEvent', { type: 'loading', id, loading: false });
     });
     // 导航
     view.webContents.on('did-navigate', (event, url, httpResponseCode, httpStatusText) => {
@@ -191,7 +191,7 @@ function resizeView(view: WebContentsView) {
       console.log('navigate', { url });
       const canGoBack = view.webContents.navigationHistory.canGoBack();
       const canGoForward = view.webContents.navigationHistory.canGoForward();
-      mainWindow.webContents.send('tab-event', {
+      mainWindow.webContents.send('tabEvent', {
         type: 'navigate',
         id,
         url,
@@ -206,7 +206,7 @@ function resizeView(view: WebContentsView) {
       console.log('navigate_in_page', { url });
       const canGoBack = view.webContents.navigationHistory.canGoBack();
       const canGoForward = view.webContents.navigationHistory.canGoForward();
-      mainWindow.webContents.send('tab-event', {
+      mainWindow.webContents.send('tabEvent', {
         type: 'navigate_in_page',
         id,
         url,
@@ -219,7 +219,7 @@ function resizeView(view: WebContentsView) {
     });
     view.webContents.setWindowOpenHandler(({ url, features, disposition }) => {
       console.log('Intercepted window.open for URL:', url);
-      mainWindow.webContents.send('tab-event', {
+      mainWindow.webContents.send('tabEvent', {
         type: 'new_tab',
         fromId: id,
         url,
@@ -250,7 +250,7 @@ function resizeView(view: WebContentsView) {
             )}`
         );
 
-        mainWindow.webContents.send('tab-event', {
+        mainWindow.webContents.send('tabEvent', {
           type: 'fail_load',
           id,
           errorCode,
