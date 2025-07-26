@@ -154,6 +154,7 @@ export default function App() {
   }
 
   async function addTab(url = 'https://example.com', fromId?: string, setActive = true) {
+    if (!url) return;
     const id = `tab-${Date.now()}`;
     await send('create-tab', id, url);
 
@@ -320,7 +321,7 @@ export default function App() {
 
   // Initialize
   useEffect(() => {
-    addTab('https://example.com/');
+    addTab();
   }, []);
 
   const buttonGroupRef = useRef<HTMLDivElement>(null);
