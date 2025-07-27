@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
-import { Button, Input } from '@heroui/react';
+import { Button, Input, ScrollShadow } from '@heroui/react';
 import { AddOutlined, RefreshOutlined, ArrowBackOutlined, ArrowForwardOutlined } from '@mui/icons-material';
 import Mousetrap from 'mousetrap';
 import { DndContext, PointerSensor, useSensor, useSensors, closestCenter } from '@dnd-kit/core';
@@ -335,7 +335,7 @@ export default function App() {
       <div className='flex flex-row w-full'>
         <div className='min-w-8 [app-region:drag]'></div>
         {/* 标签栏 */}
-        <div
+        <ScrollShadow
           id='tab-bar'
           ref={containerRef}
           className='grow flex items-center h-[42px] px-[4px] py-1 overflow-x-auto overflow-y-hidden scrollbar-hide'
@@ -345,7 +345,10 @@ export default function App() {
               event.preventDefault();
               ele?.scrollBy({ left: event.deltaY });
             }
-          }}>
+          }}
+          size={16}
+          orientation='horizontal'
+          >
           <div className='flex flex-row gap-[4px] h-full'>
             <DndContext
               sensors={sensors}
@@ -402,7 +405,7 @@ export default function App() {
             </button>
           </div>
           <div className='h-full grow-1 [app-region:drag]'></div>
-        </div>
+        </ScrollShadow>
         {/* 窗口控制菜单 */}
         <div className='min-w-[138px]'></div>
       </div>
