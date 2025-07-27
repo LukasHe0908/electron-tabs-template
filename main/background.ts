@@ -157,12 +157,22 @@ function resizeView(view: WebContentsView) {
   });
 
   ipcMain.handle('create-tab', async (_e, id: string, url: string) => {
+    if (!url) {
+      tabMap.forEach(tab => {
+        mainWindow.contentView.removeChildView(tab.view);
+      });
+      mainWindow.webContents.focus();
+      return;
+    }
     const view = new WebContentsView({
       webPreferences: {
         preload: path.join(__dirname, 'preloadWebview.js'),
       },
     });
     view.webContents.loadURL(url);
+    tabMap.forEach(tab => {
+      mainWindow.contentView.removeChildView(tab.view);
+    });
     tabMap.set(id, { view });
     mainWindow.contentView.addChildView(view);
     resizeView(view);

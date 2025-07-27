@@ -111,7 +111,7 @@ export default function App() {
             closeTab(id);
             break;
           case 'ctrl+t':
-            addTab();
+            addTab('about:blank');
             break;
           case 'ctrl+r':
             if (currentActive) reloadPage(currentActive);
@@ -129,11 +129,7 @@ export default function App() {
             if (currentActive) goForward(currentActive);
             break;
           case 'f6':
-            const input = document.getElementById('url-input') as HTMLInputElement | null;
-            if (input) {
-              input.focus();
-              input.select();
-            }
+            focusURLInput(true);
             break;
 
           default:
@@ -155,13 +151,14 @@ export default function App() {
 
   async function addTab(url = 'https://example.com', fromId?: string, setActive = true) {
     if (!url) return;
+    const isBlank = url === 'about:blank';
     const id = `tab-${Date.now()}`;
-    await send('create-tab', id, url);
+    await send('create-tab', id, isBlank ? '' : url);
 
     if (fromId) {
       setTabs(prevTabs => {
         const index = prevTabs.findIndex(t => t.id === fromId);
-        const newTab: Tab = { id, title: '', url, loading: true };
+        const newTab: Tab = { id, title: '', url: isBlank ? '' : url, loading: !isBlank };
 
         if (index >= 0) {
           const newTabs = [...prevTabs];
@@ -172,11 +169,11 @@ export default function App() {
         }
       });
     } else {
-      setTabs(t => [...t, { id, title: '', url, loading: true }]);
+      setTabs(t => [...t, { id, title: '', url: isBlank ? '' : url, loading: !isBlank }]);
     }
     if (setActive) {
       setActiveTab(id);
-      setUrlInput(url);
+      setUrlInput(isBlank ? '' : url);
     }
   }
 
@@ -265,6 +262,13 @@ export default function App() {
       addTab(finalUrl);
     }
   }
+  function focusURLInput(select: boolean = false) {
+    const input = document.getElementById('url-input') as HTMLInputElement | null;
+    if (input) {
+      input.focus();
+      if (select) input.select();
+    }
+  }
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -274,7 +278,7 @@ export default function App() {
     });
     Mousetrap.bind('ctrl+t', e => {
       e.preventDefault();
-      addTab();
+      addTab('about:blank');
     });
     Mousetrap.bind(['ctrl+r', 'f5'], e => {
       e.preventDefault();
@@ -298,11 +302,7 @@ export default function App() {
     });
     Mousetrap.bind('f6', e => {
       e.preventDefault();
-      const input = document.getElementById('url-input') as HTMLInputElement | null;
-      if (input) {
-        input.focus();
-        input.select();
-      }
+      focusURLInput(true);
     });
     return () => {
       Mousetrap.unbind([
@@ -338,7 +338,7 @@ export default function App() {
         <ScrollShadow
           id='tab-bar'
           ref={containerRef}
-          className='grow flex items-center h-[42px] px-[4px] py-1 overflow-x-auto overflow-y-hidden scrollbar-hide'
+          className='grow flex items-center h-[42px] px-1 py-1 overflow-x-auto overflow-y-hidden scrollbar-hide'
           onWheel={event => {
             const ele = document.getElementById('tab-bar');
             if (event.deltaY !== 0) {
@@ -347,9 +347,8 @@ export default function App() {
             }
           }}
           size={16}
-          orientation='horizontal'
-          >
-          <div className='flex flex-row gap-[4px] h-full'>
+          orientation='horizontal'>
+          <div className='flex flex-row gap-1 h-full'>
             <DndContext
               sensors={sensors}
               modifiers={[
@@ -390,7 +389,7 @@ export default function App() {
             {/* 添加新标签按钮 */}
             <button
               onClick={() => {
-                addTab();
+                addTab('about:blank');
               }}
               className='h-full aspect-square flex items-center justify-center rounded-md hover:bg-[rgba(0,0,0,0.1)] dark:hover:bg-[rgba(255,255,255,0.1)] transition-colors text-gray-800 dark:text-gray-200 focus-visible:outline-0 focus-visible:ring-2 ring-blue-400'>
               <AddOutlined style={{ fontSize: '20px' }} />
@@ -465,7 +464,7 @@ export default function App() {
       </div>
 
       {/* 内容 区域 */}
-      <div className='flex-grow bg-white dark:bg-black'></div>
+      <div className='flex-grow bg-white dark:bg-[#2b2a33]'></div>
     </div>
   );
 }
