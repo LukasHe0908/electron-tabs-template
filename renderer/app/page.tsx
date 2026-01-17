@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { Button, Input, ScrollShadow } from '@heroui/react';
 import { AddOutlined, RefreshOutlined, ArrowBackOutlined, ArrowForwardOutlined } from '@mui/icons-material';
 import Mousetrap from 'mousetrap';
@@ -16,6 +16,8 @@ type Tab = {
   url: string;
   loading: boolean;
   favicon?: string | null;
+  canGoBack: boolean;
+  canGoForward: boolean;
 };
 
 export default function App() {
@@ -23,16 +25,19 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<string | null>(null);
   const tabsRef = useRef<Tab[]>([]);
   const activeTabRef = useRef<string | null>(null);
+
+  const activeTabState = activeTab == null ? null : (tabs.find(t => t.id === activeTab) ?? null);
+  const canGoBack = activeTabState?.canGoBack ?? false;
+  const canGoForward = activeTabState?.canGoForward ?? false;
+
   const [urlInput, setUrlInput] = useState('');
   const urlInputRef = useRef('');
-  const [canGoBack, setCanGoBack] = useState(false);
-  const [canGoForward, setCanGoForward] = useState(false);
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
         distance: 5,
       },
-    })
+    }),
   );
   const [activeId, setActiveId] = useState<string | null>(null);
 
@@ -51,6 +56,12 @@ export default function App() {
   // IPC event listener
   useEffect(() => {
     activeTabRef.current = activeTab;
+    if (!activeTab) {
+      setTitle(null, true);
+      return;
+    }
+    const tab = tabsRef.current.find(t => t.id === activeTab);
+    setTitle(tab.title);
   }, [activeTab]);
   useEffect(() => {
     const handler = (message: any) => {
@@ -77,21 +88,24 @@ export default function App() {
               updated.loading = data.loading;
             }
             if (type === 'navigate' || type === 'navigate_in_page') {
-              updated.url = data.url;
-              if (tab.id === activeTabRef.current) setUrlInput(data.url);
-              setCanGoBack(data.canGoBack);
-              setCanGoForward(data.canGoForward);
+              updated.url = normalizeDisplayUrl(data.url);
+              updated.canGoBack = data.canGoBack;
+              updated.canGoForward = data.canGoForward;
+
+              if (tab.id === activeTabRef.current) {
+                setUrlInput(updated.url);
+              }
             }
             if (type === 'fail_load') {
               setTabs(tabs => tabs.map(t => (t.id === tab.id ? { ...t, title: '页面加载失败' } : t)));
             }
             return updated;
-          })
+          }),
         );
       }
 
       if (id === activeTabRef.current && type === 'title') {
-        document.title = `${data.title || '新标签页'} - ${'Electron Tabs Template'}`;
+        setTitle(data.title);
       }
     };
 
@@ -111,7 +125,7 @@ export default function App() {
             closeTab(id);
             break;
           case 'ctrl+t':
-            addTab('about:blank');
+            addTab('');
             break;
           case 'ctrl+r':
             if (currentActive) reloadPage(currentActive);
@@ -149,16 +163,22 @@ export default function App() {
     return await window.ipc?.invoke(channel, ...args);
   }
 
-  async function addTab(url = 'https://example.com', fromId?: string, setActive = true) {
-    if (!url) return;
-    const isBlank = url === 'about:blank';
+  async function addTab(url = 'about:blank', fromId?: string, setActive = true) {
+    const isBlank = url === 'about:blank' || !url;
     const id = `tab-${Date.now()}`;
-    await send('create-tab', id, isBlank ? '' : url);
+    await send('create-tab', id, url, setActive);
 
     if (fromId) {
       setTabs(prevTabs => {
         const index = prevTabs.findIndex(t => t.id === fromId);
-        const newTab: Tab = { id, title: '', url: isBlank ? '' : url, loading: !isBlank };
+        const newTab: Tab = {
+          id,
+          title: '',
+          url: isBlank ? '' : url,
+          loading: !isBlank,
+          canGoBack: false,
+          canGoForward: false,
+        };
 
         if (index >= 0) {
           const newTabs = [...prevTabs];
@@ -169,11 +189,14 @@ export default function App() {
         }
       });
     } else {
-      setTabs(t => [...t, { id, title: '', url: isBlank ? '' : url, loading: !isBlank }]);
+      setTabs(t => [
+        ...t,
+        { id, title: '', url: isBlank ? '' : url, loading: !isBlank, canGoBack: false, canGoForward: false },
+      ]);
     }
     if (setActive) {
       setActiveTab(id);
-      setUrlInput(isBlank ? '' : url);
+      setUrlInput(normalizeDisplayUrl(url));
     }
   }
 
@@ -183,7 +206,7 @@ export default function App() {
     const tab = currentTabs.find(t => t.id === id);
     if (tab) {
       setActiveTab(id);
-      setUrlInput(tab.url);
+      setUrlInput(normalizeDisplayUrl(tab.url));
     }
   }
 
@@ -203,13 +226,13 @@ export default function App() {
         const nextTab = newTabs[nextIndex];
         await switchTab(nextTab.id);
         setActiveTab(nextTab.id);
-        setUrlInput(nextTab.url);
+        setUrlInput(normalizeDisplayUrl(nextTab.url));
       } else {
         await switchTab(null);
         setActiveTab(null);
         setUrlInput('');
-        setCanGoBack(false);
-        setCanGoForward(false);
+        // setCanGoBack(false);
+        // setCanGoForward(false);
       }
     }
   }
@@ -321,7 +344,7 @@ export default function App() {
 
   // Initialize
   useEffect(() => {
-    addTab();
+    addTab('https://example.com');
   }, []);
 
   const buttonGroupRef = useRef<HTMLDivElement>(null);
@@ -389,7 +412,7 @@ export default function App() {
             {/* 添加新标签按钮 */}
             <button
               onClick={() => {
-                addTab('about:blank');
+                addTab('');
               }}
               className='h-full aspect-square flex items-center justify-center rounded-md hover:bg-[rgba(0,0,0,0.1)] dark:hover:bg-[rgba(255,255,255,0.1)] transition-colors text-gray-800 dark:text-gray-200 focus-visible:outline-0 focus-visible:ring-2 ring-blue-400'>
               <AddOutlined style={{ fontSize: '20px' }} />
@@ -403,10 +426,10 @@ export default function App() {
               <RefreshOutlined style={{ fontSize: '20px' }} />
             </button>
           </div>
-          <div className='h-full grow-1 [app-region:drag]'></div>
+          <div className='h-full grow [app-region:drag]'></div>
         </ScrollShadow>
         {/* 窗口控制菜单 */}
-        <div className='min-w-[138px]'></div>
+        <div className='min-w-34.5'></div>
       </div>
 
       {/* 地址栏 */}
@@ -450,10 +473,13 @@ export default function App() {
               'group-data-[focus=true]:!bg-white',
               'dark:group-data-[focus=true]:!bg-[rgba(255,255,255,0.2)]',
               'group-data-[focus=true]:shadow-md',
+              '!text-black',
+              'dark:!text-white',
             ],
           }}
           placeholder='Search or enter address'
           size='sm'
+          spellCheck='false'
           onKeyDown={e => {
             let event: KeyboardEvent = e;
             if (event.key === 'Enter') {
@@ -464,9 +490,20 @@ export default function App() {
       </div>
 
       {/* 内容 区域 */}
-      <div className='flex-grow bg-white dark:bg-[#2b2a33]'></div>
+      <div className='grow bg-white dark:bg-[#2b2a33]'></div>
     </div>
   );
+}
+
+function setTitle(title: string | null, raw = false) {
+  let productName = 'Electron Tabs Template';
+  document.title = (raw ? '' : `${title || '新标签页'} - `) + productName;
+}
+
+function normalizeDisplayUrl(url?: string) {
+  if (!url) return '';
+  if (url === 'about:blank') return '';
+  return url;
 }
 
 function SortableTab({

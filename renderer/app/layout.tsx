@@ -4,7 +4,6 @@ import '../styles/globals.css';
 import { HeroUIProvider } from '@heroui/react';
 import { Snackbar, Fade } from '@mui/material';
 import { createRoot } from 'react-dom/client';
-import 'overlayscrollbars/overlayscrollbars.css';
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const [themeClass, setThemeClass] = useState(''); // '' | 'dark'
@@ -61,8 +60,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <meta charSet='UTF-8' />
           <meta name='viewport' content='width=device-width, initial-scale=1.0' />
         </head>
-        <body className='h-full !scrollbar-hide'>
-          <HeroUIProvider className={`h-full !scrollbar-hide ${themeClass}`}>{children}</HeroUIProvider>
+        <body className='h-full scrollbar-hide!'>
+          <HeroUIProvider className={`h-full scrollbar-hide! ${themeClass}`}>{children}</HeroUIProvider>
         </body>
       </html>
     </>

@@ -3,7 +3,6 @@ import path from 'path';
 import { app, BrowserWindow, ipcMain, Menu, nativeTheme, webContents, WebContentsView } from 'electron';
 import serve from 'electron-serve';
 import contextMenu, { Options as MenuOptions } from 'electron-context-menu';
-import log from 'electron-log';
 import { createWindow } from './helpers';
 
 const isProd = process.env.NODE_ENV === 'production';
@@ -54,7 +53,7 @@ function getProviderPath(params: string) {
 function getOverlayStyle() {
   const isDark = nativeTheme.shouldUseDarkColors;
   return {
-    color: isDark ? '#1f1e25' : '#eaeaed',
+    color: '#0000',
     symbolColor: isDark ? '#fff' : '#000',
     height: 42,
   };
@@ -87,13 +86,6 @@ function resizeView(view: WebContentsView) {
     console.log('  Error Code:', errorCode);
     console.log('  Description:', errorDescription);
     console.log('  Is Main Frame:', isMainFrame);
-
-    log.error('splashWindow load fail', {
-      url: validatedURL,
-      code: errorCode,
-      message: errorDescription,
-      mainFrame: isMainFrame,
-    });
   });
 
   mainWindow = createWindow('main', {
@@ -122,13 +114,6 @@ function resizeView(view: WebContentsView) {
     console.log('  Error Code:', errorCode);
     console.log('  Description:', errorDescription);
     console.log('  Is Main Frame:', isMainFrame);
-
-    log.error('mainWindow load fail', {
-      url: validatedURL,
-      code: errorCode,
-      message: errorDescription,
-      mainFrame: isMainFrame,
-    });
   });
   // 页面加载完成后关闭 splash，显示主窗口
   mainWindow.once('ready-to-show', () => {
@@ -156,36 +141,41 @@ function resizeView(view: WebContentsView) {
     if (activeView) activeView = null;
   });
 
-  ipcMain.handle('create-tab', async (_e, id: string, url: string) => {
-    if (!url) {
-      tabMap.forEach(tab => {
-        mainWindow.contentView.removeChildView(tab.view);
-      });
-      mainWindow.webContents.focus();
-      return;
-    }
+  ipcMain.handle('create-tab', async (_e, id: string, url: string, setActive: boolean = true) => {
     const view = new WebContentsView({
       webPreferences: {
         preload: path.join(__dirname, 'preloadWebview.js'),
       },
     });
-    view.webContents.loadURL(url);
-    tabMap.forEach(tab => {
-      mainWindow.contentView.removeChildView(tab.view);
-    });
     tabMap.set(id, { view });
-    mainWindow.contentView.addChildView(view);
+    if (url) {
+      view.webContents.loadURL(url);
+    } else {
+      view.webContents.loadURL('about:blank');
+    }
+    if (setActive) {
+      tabMap.forEach(tab => {
+        mainWindow.contentView.removeChildView(tab.view);
+      });
+      mainWindow.contentView.addChildView(view);
+      activeView = view;
+      if (url && url !== 'about:blank') {
+        view.webContents.focus();
+      } else {
+        mainWindow.webContents.focus();
+      }
+    }
     resizeView(view);
 
     // attach contextMenu
     view.webContents.on('context-menu', contextMenu({ ...contextMenuOptions, window: view }));
     // 标题 / favicon 更新
     view.webContents.on('page-title-updated', (_ev, title, explicitSet) => {
-      console.log('title', { id, title, explicitSet });
+      // console.debug('title', { id, title, explicitSet });
       mainWindow.webContents.send('tabEvent', { type: 'title', id, title, explicitSet });
     });
     view.webContents.on('page-favicon-updated', (_ev, favicons) => {
-      console.log('favicon', { id, favicons });
+      // console.debug('favicon', { id, favicons });
       mainWindow.webContents.send('tabEvent', { type: 'favicon', id, favicons });
     });
     // 加载状态
@@ -198,7 +188,7 @@ function resizeView(view: WebContentsView) {
     // 导航
     view.webContents.on('did-navigate', (event, url, httpResponseCode, httpStatusText) => {
       if (url.startsWith(getProviderPath('/error/'))) return;
-      console.log('navigate', { url });
+      // console.debug('navigate', { url });
       const canGoBack = view.webContents.navigationHistory.canGoBack();
       const canGoForward = view.webContents.navigationHistory.canGoForward();
       mainWindow.webContents.send('tabEvent', {
@@ -213,7 +203,7 @@ function resizeView(view: WebContentsView) {
     });
     view.webContents.on('did-navigate-in-page', (event, url, isMainFrame, frameProcessId, frameRoutingId) => {
       if (url.startsWith(getProviderPath('/error/'))) return;
-      console.log('navigate_in_page', { url });
+      // console.debug('navigate_in_page', { url });
       const canGoBack = view.webContents.navigationHistory.canGoBack();
       const canGoForward = view.webContents.navigationHistory.canGoForward();
       mainWindow.webContents.send('tabEvent', {
@@ -228,7 +218,7 @@ function resizeView(view: WebContentsView) {
       });
     });
     view.webContents.setWindowOpenHandler(({ url, features, disposition }) => {
-      console.log('Intercepted window.open for URL:', url);
+      // console.debug('Intercepted window.open for URL:', url);
       mainWindow.webContents.send('tabEvent', {
         type: 'new_tab',
         fromId: id,
@@ -256,8 +246,8 @@ function resizeView(view: WebContentsView) {
         view.webContents.loadURL(
           errorPageUrl +
             `?url=${encodeURIComponent(validatedURL)}&description=${encodeURIComponent(
-              `${errorCode}${errorDescription && ' ' + errorDescription}`
-            )}`
+              `${errorCode}${errorDescription && ' ' + errorDescription}`,
+            )}`,
         );
 
         mainWindow.webContents.send('tabEvent', {
@@ -270,7 +260,7 @@ function resizeView(view: WebContentsView) {
           frameProcessId,
           frameRoutingId,
         });
-      }
+      },
     );
     return true;
   });
@@ -338,7 +328,7 @@ function resizeView(view: WebContentsView) {
     }
 
     if (matchedTabId) {
-      console.log(`[hotkey] From tab ${matchedTabId}: ${hotkey}`);
+      // console.debug(`[hotkey] From tab ${matchedTabId}: ${hotkey}`);
       if (hotkey === 'f6') {
         mainWindow.webContents.focus();
       }
