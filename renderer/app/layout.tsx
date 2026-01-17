@@ -1,14 +1,13 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useState } from 'react';
 import '../styles/globals.css';
-import { HeroUIProvider } from '@heroui/react';
-import { Snackbar, Fade } from '@mui/material';
-import { createRoot } from 'react-dom/client';
+import { HeroUIProvider, addToast } from '@heroui/react';
+import { ToastProvider } from '@heroui/toast';
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const [themeClass, setThemeClass] = useState(''); // '' | 'dark'
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const matchDark = window.matchMedia('(prefers-color-scheme: dark)');
     const updateTheme = () => {
       setThemeClass(matchDark.matches ? 'dark' : '');
@@ -23,23 +22,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   useEffect(() => {
     window.alert = function (...args: any[1]) {
       console.log('[Alert]', args[0]);
-      function handleClose() {
-        container.remove();
-      }
-      const body = document.body;
-      const container = document.createElement('div');
-      const root = createRoot(container);
-      root.render(
-        <Snackbar
-          open
-          onClose={handleClose}
-          message={args[0].toString()}
-          autoHideDuration={2000}
-          TransitionComponent={Fade}
-          anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-        />
-      );
-      body?.appendChild(container);
+      addToast({
+        hideIcon: false,
+        color: 'primary',
+        description: args[0],
+        classNames: {
+          description: 'whitespace-pre-wrap',
+        },
+      });
       return true;
     };
   }, []);
@@ -61,6 +51,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <meta name='viewport' content='width=device-width, initial-scale=1.0' />
         </head>
         <body className='h-full scrollbar-hide!'>
+          <ToastProvider />
           <HeroUIProvider className={`h-full scrollbar-hide! ${themeClass}`}>{children}</HeroUIProvider>
         </body>
       </html>

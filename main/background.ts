@@ -1,4 +1,3 @@
-/* background.ts */
 import path from 'path';
 import { app, BrowserWindow, ipcMain, Menu, nativeTheme, webContents, WebContentsView } from 'electron';
 import serve from 'electron-serve';
