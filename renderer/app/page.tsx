@@ -231,8 +231,6 @@ export default function App() {
         await switchTab(null);
         setActiveTab(null);
         setUrlInput('');
-        // setCanGoBack(false);
-        // setCanGoForward(false);
       }
     }
   }
