@@ -353,13 +353,13 @@ export default function App() {
   return (
     <div className='w-full h-screen flex flex-col bg-[#eaeaed] dark:bg-[#1f1e25]'>
       {/* 窗口标题栏 */}
-      <div className='flex flex-row w-full'>
+      <div className='flex flex-row pl-[env(titlebar-area-x,0px)] w-[env(titlebar-area-width,calc(100%-140px))] h-[env(titlebar-area-height,42px)]'>
         <div className='min-w-8 [app-region:drag]'></div>
         {/* 标签栏 */}
         <ScrollShadow
           id='tab-bar'
           ref={containerRef}
-          className='grow flex items-center h-[42px] px-1 py-1 overflow-x-auto overflow-y-hidden scrollbar-hide'
+          className='grow flex items-center px-1 py-1 overflow-x-auto overflow-y-hidden scrollbar-hide'
           onWheel={event => {
             const ele = document.getElementById('tab-bar');
             if (event.deltaY !== 0) {
@@ -426,8 +426,6 @@ export default function App() {
           </div>
           <div className='h-full grow [app-region:drag]'></div>
         </ScrollShadow>
-        {/* 窗口控制菜单 */}
-        <div className='min-w-34.5'></div>
       </div>
 
       {/* 地址栏 */}
